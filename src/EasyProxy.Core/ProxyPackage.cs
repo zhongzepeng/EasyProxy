@@ -3,6 +3,8 @@
     public class ProxyPackage
     {
         public const int HEADER_SIZE = 4;
+        public const int TYPE_SIZE = 1;
+        public const int CONNECTIONID_SIZE = 4;
 
         public PackageType Type { get; set; }
         public int ConnectionId { get; set; }

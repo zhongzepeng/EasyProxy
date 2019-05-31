@@ -11,12 +11,16 @@ namespace EasyProxy.Core.Channel
     {
         private readonly Socket socket;
         private readonly Pipe pipe;
+        private readonly Pipe outputPipe;
         private readonly IPackageEncoder<ProxyPackage> encoder;
-        public ProxyChannel(Socket socket, IPackageEncoder<ProxyPackage> encoder)
+        private readonly IPackageDecoder<ProxyPackage> decoder;
+        public ProxyChannel(Socket socket, IPackageEncoder<ProxyPackage> encoder, IPackageDecoder<ProxyPackage> decoder)
         {
             this.encoder = encoder;
+            this.decoder = decoder;
             this.socket = socket;
             pipe = new Pipe();
+            outputPipe = new Pipe();
         }
 
         public event Func<IChannel<ProxyPackage>, ProxyPackage, Task> PackageReceived;
@@ -31,6 +35,7 @@ namespace EasyProxy.Core.Channel
 
         public async Task StartAsync()
         {
+            //写入pipewriter
             _ = PipelineUtils.FillPipeAsync(socket, pipe.Writer);
 
             _ = ReadPipeAsync(pipe.Reader);
@@ -48,10 +53,8 @@ namespace EasyProxy.Core.Channel
                 var result = await reader.ReadAsync();
 
                 var buffer = result.Buffer;
-
                 var consumed = buffer.Start;
                 var examined = buffer.End;
-
                 try
                 {
                     if (result.IsCanceled)
@@ -62,19 +65,22 @@ namespace EasyProxy.Core.Channel
 
                     while (true)
                     {
-                        var package = ReadPackage(buffer, out consumed, out examined);
+                        var package = ReadPackage(buffer, out int total);
 
                         if (package != null)
                         {
                             await OnPackageReceived(package);
+                            examined = buffer.GetPosition(total);
+                            buffer = buffer.Slice(total);
+                            if (buffer.Length == 0)
+                            {
+                                break;
+                            }
                         }
-
-                        if (examined.Equals(buffer.End))
+                        else
                         {
                             break;
                         }
-
-                        buffer = buffer.Slice(examined);
                     }
                     if (completed)
                     {
@@ -90,25 +96,28 @@ namespace EasyProxy.Core.Channel
             reader.Complete();
         }
 
-        public ProxyPackage ReadPackage(ReadOnlySequence<byte> buffer, out SequencePosition consumed, out SequencePosition examined)
+        public ProxyPackage ReadPackage(ReadOnlySequence<byte> buffer, out int total)
         {
-            consumed = buffer.Start;
-            examined = buffer.End;
-
             if (ProxyPackage.HEADER_SIZE > buffer.Length)
             {
+                total = 0;
                 return null;
             }
 
-            var packageLength = buffer.Slice(0, ProxyPackage.HEADER_SIZE).ToInt(); //data length
+            var headerBuffer = buffer.Slice(0, ProxyPackage.HEADER_SIZE);
+            var packageLength = headerBuffer.ToInt();
 
-            if (packageLength + ProxyPackage.HEADER_SIZE > buffer.Length)
+            total = packageLength + ProxyPackage.HEADER_SIZE;
+
+            if (total > buffer.Length)
             {
+                total = 0;
                 return null;
             }
 
+            var bodyBuffer = buffer.Slice(ProxyPackage.HEADER_SIZE, packageLength);
 
-            return null;
+            return decoder.Decode(bodyBuffer);
         }
     }
 }
