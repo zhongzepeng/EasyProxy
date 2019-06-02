@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using EasyProxy.Core.Codec;
+using EasyProxy.Core.Common;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,6 +14,9 @@ namespace EasyProxy.Server
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddSingleton<ProxyServer>();
+            serviceCollection.AddSingleton(typeof(IIdGenerator), typeof(IdGenerator));
+            serviceCollection.AddSingleton<ProxyPackageDecoder>();
+            serviceCollection.AddSingleton<ProxyPackageEncoder>();
             var configuration = BuildConfiguration();
             serviceCollection.AddSingleton(configuration);
             serviceCollection.AddLogging(configure => configure.AddConsole());
@@ -23,6 +28,8 @@ namespace EasyProxy.Server
             var task = proxyServer.StartAsync();
 
             Task.WaitAll(task);
+
+            Console.ReadKey();
         }
 
         static IConfiguration BuildConfiguration()

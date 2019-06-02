@@ -7,10 +7,14 @@
 
   <ItemGroup>
     <None Remove="appsettings.json" />
+    <None Remove="easyproxy.db" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="easyproxy.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -1,13 +1,15 @@
 ﻿using EasyProxy.Core;
+using EasyProxy.Core.Channel;
+using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
+using EasyProxy.Core.Config;
 using EasyProxy.Server.Dashboard;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Concurrent;
-using System.Threading;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Server
@@ -18,47 +20,66 @@ namespace EasyProxy.Server
 
         private readonly ServerOptions options;
 
-        private readonly CancellationToken cancellationToken;
+        private readonly ProxyPackageDecoder decoder;
+        private readonly ProxyPackageEncoder encoder;
+        private readonly ConfigHelper configHelper;
+        private readonly IIdGenerator idGenerator;
 
-        private readonly ConcurrentDictionary<int, ProxyConfigurationItem> onlineConnections;
-
-        public ProxyServer(IOptions<ServerOptions> options, ILogger<ProxyServer> logger)
+        public ProxyServer(IOptions<ServerOptions> options, ILogger<ProxyServer> logger, ProxyPackageDecoder decoder, ProxyPackageEncoder encoder, IIdGenerator idGenerator)
         {
             this.logger = logger;
             this.options = options?.Value;
             Checker.NotNull(this.options);
-            cancellationToken = new CancellationTokenSource().Token;
-            onlineConnections = new ConcurrentDictionary<int, ProxyConfigurationItem>();
+            this.decoder = decoder;
+            this.encoder = encoder;
+            configHelper = new ConfigHelper();
+            this.idGenerator = idGenerator;
         }
 
         public async Task StartAsync()
         {
             if (options.EanbleDashboard)
             {
-                await StartDashboardAsync();
+                _ = StartDashboardAsync();
             }
-            await StartProxyServerAsync();
+            await StartProxyServer();
         }
 
-        private async Task StartProxyServerAsync()
+        private async Task StartProxyServer()
         {
-            var connections = ProxyConfigurationHelper.GetAllConnections();
-            foreach (var connection in connections)
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            var endpoint = new IPEndPoint(IPAddress.Any, options.ServerPort);
+            socket.Bind(endpoint);
+            socket.Listen(options.MaxConnection);
+            await Task.Factory.StartNew(async () =>
             {
-                try
+                logger.LogInformation($"ProxyServer listen on : {endpoint.Port}");
+                while (true)
                 {
-                    var proxyServerConnection = new ProxyServerConnection(connection, logger);
-                    await proxyServerConnection.StartAsync();
-                    onlineConnections.TryAdd(connection.Id, connection);
-                    logger.LogInformation($"Connection {connection.Id} start success!");
+                    var clientSocket = await socket.AcceptAsync();
+                    var proxyChannel = new ProxyChannel(clientSocket, encoder, decoder);
+                    proxyChannel.PackageReceived += OnPackageReceived;
+                    _ = proxyChannel.StartAsync();
                 }
-                catch (Exception ex)
-                {
-                    logger.LogInformation($"{ex} Connection {connection.Id} start fail!");
-                }
-            }
+            });
         }
 
+        private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
+            switch (package.Type)
+            {
+                case PackageType.Connect:
+                    var channelConfig = await configHelper.GetChannelAsync(package.ChannelId);
+                    ProxyServerChannelManager.AddChannel(package.ChannelId, channel);
+                    var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
+                    await connection.StartAsync();
+                    break;
+
+                case PackageType.DisConnected:
+                    ProxyServerChannelManager.RemoveChannel(package.ChannelId);
+                    break;
+            }
+        }
 
         private async Task StartDashboardAsync()
         {

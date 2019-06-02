@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -48,32 +49,38 @@ namespace EasyProxy.Core
         /// <param name="pipeReader"></param>
         /// <param name="socket"></param>
         /// <returns></returns>
-        public static async Task ReadPipeAsync(PipeReader pipeReader, Socket socket)
+        public static async Task ReadPipeAsync(PipeReader pipeReader, int bufferLength, Action<byte[]> action)
         {
             while (true)
             {
                 var result = await pipeReader.ReadAsync();
 
-                if (result.IsCanceled || result.IsCompleted)
+                if (result.IsCanceled)
                 {
                     break;
                 }
+                var isCompleted = result.IsCompleted;
 
                 var buffer = result.Buffer;
 
-                var sequence = buffer.Slice(0, buffer.Length);//有多少发多少
+                var total = Math.Min(bufferLength, buffer.Length);
 
-                var array = GetArray(sequence.First);
+                var array = buffer.Slice(0, total).ToArray();//有多少发多少
 
-                await socket.SendAsync(array, SocketFlags.None);
+                action(array);
 
-                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                var examined = buffer.GetPosition(total);
+
+                pipeReader.AdvanceTo(buffer.Start, examined);
+
+                if (isCompleted)
+                { break; }
             }
 
             pipeReader.Complete();
         }
 
-        private static ArraySegment<byte> GetArray(ReadOnlyMemory<byte> memory)
+        public static ArraySegment<byte> GetArray(ReadOnlyMemory<byte> memory)
         {
             if (!MemoryMarshal.TryGetArray(memory, out var result))
             {

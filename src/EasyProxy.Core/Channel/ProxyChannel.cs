@@ -1,6 +1,7 @@
 ﻿using EasyProxy.Core.Codec;
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -10,17 +11,20 @@ namespace EasyProxy.Core.Channel
     public class ProxyChannel : IChannel<ProxyPackage>
     {
         private readonly Socket socket;
-        private readonly Pipe pipe;
-        private readonly Pipe outputPipe;
+        private readonly Pipe pipe;//用户接收数据
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
+        private readonly Pipe sendPipe;//用于发送数据
+
+
+        private List<ArraySegment<byte>> segmentsForSend;
         public ProxyChannel(Socket socket, IPackageEncoder<ProxyPackage> encoder, IPackageDecoder<ProxyPackage> decoder)
         {
             this.encoder = encoder;
             this.decoder = decoder;
             this.socket = socket;
             pipe = new Pipe();
-            outputPipe = new Pipe();
+            sendPipe = new Pipe();
         }
 
         public event Func<IChannel<ProxyPackage>, ProxyPackage, Task> PackageReceived;
@@ -29,16 +33,23 @@ namespace EasyProxy.Core.Channel
 
         public async Task SendAsync(ProxyPackage package)
         {
-            var menory = encoder.Encode(package);
-            await socket.SendAsync(menory, SocketFlags.None);
+            var packageData = (Memory<byte>)encoder.Encode(package);
+            Console.WriteLine($"发送数据包：{packageData.Length}");
+            var writer = sendPipe.Writer;
+            var memory = writer.GetMemory(packageData.Length);
+            packageData.CopyTo(memory);
+            writer.Advance(packageData.Length);
+            await writer.FlushAsync();
         }
 
         public async Task StartAsync()
         {
-            //写入pipewriter
             _ = PipelineUtils.FillPipeAsync(socket, pipe.Writer);
-
             _ = ReadPipeAsync(pipe.Reader);
+
+            _ = ReadSendPipeAsync(sendPipe.Reader);
+
+            await Task.CompletedTask;
         }
 
         protected async Task OnPackageReceived(ProxyPackage package)
@@ -51,7 +62,6 @@ namespace EasyProxy.Core.Channel
             while (true)
             {
                 var result = await reader.ReadAsync();
-
                 var buffer = result.Buffer;
                 var consumed = buffer.Start;
                 var examined = buffer.End;
@@ -105,9 +115,9 @@ namespace EasyProxy.Core.Channel
             }
 
             var headerBuffer = buffer.Slice(0, ProxyPackage.HEADER_SIZE);
-            var packageLength = headerBuffer.ToInt();
+            var frameLength = headerBuffer.ToInt();
 
-            total = packageLength + ProxyPackage.HEADER_SIZE;
+            total = frameLength + ProxyPackage.HEADER_SIZE;
 
             if (total > buffer.Length)
             {
@@ -115,9 +125,85 @@ namespace EasyProxy.Core.Channel
                 return null;
             }
 
-            var bodyBuffer = buffer.Slice(ProxyPackage.HEADER_SIZE, packageLength);
+            var bodyBuffer = buffer.Slice(ProxyPackage.HEADER_SIZE, frameLength).ToArray();
 
             return decoder.Decode(bodyBuffer);
+        }
+
+        /// <summary>
+        /// 读取sendPipe的内容，发送出去
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        private async Task ReadSendPipeAsync(PipeReader reader)
+        {
+            while (true)
+            {
+                var result = await reader.ReadAsync();
+                if (result.IsCanceled)
+                {
+                    break;
+                }
+                var isCompleted = result.IsCompleted;
+
+                var buffer = result.Buffer;
+                var end = buffer.End;
+                if (!buffer.IsEmpty)
+                {
+                    try
+                    {
+                        await SendAsync(buffer);
+                    }
+                    catch (Exception e)
+                    {
+                        reader.Complete();
+                        return;
+                    }
+                }
+                reader.AdvanceTo(end);
+
+                //var total = Math.Min(SEND_BUFFER_SIZE, buffer.Length);
+                //var array = buffer.Slice(0, total).ToArray();//有多少发多少
+                //if (array.Length == 0)
+                //{
+                //    continue;
+                //}
+                ////Console.WriteLine($"真实发送数据：{array.Length}");
+                //await socket.SendAsync(array, SocketFlags.None);
+
+                //var examined = buffer.GetPosition(total);
+                //reader.AdvanceTo(buffer.Start, examined);
+
+                if (isCompleted)
+                { break; }
+            }
+
+            reader.Complete();
+        }
+
+        protected async ValueTask<int> SendAsync(ReadOnlySequence<byte> buffer)
+        {
+            if (buffer.IsSingleSegment)
+            {
+                return await socket.SendAsync(PipelineUtils.GetArray(buffer.First), SocketFlags.None);
+            }
+
+            if (segmentsForSend == null)
+            {
+                segmentsForSend = new List<ArraySegment<byte>>();
+            }
+            else
+            {
+                segmentsForSend.Clear();
+            }
+
+
+            foreach (var piece in buffer)
+            {
+                segmentsForSend.Add(PipelineUtils.GetArray(piece));
+            }
+
+            return await socket.SendAsync(segmentsForSend, SocketFlags.None);
         }
     }
 }

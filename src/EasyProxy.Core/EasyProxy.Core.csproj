@@ -6,8 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" Version="1.60.6" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="2.2.4" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="2.2.0" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.110" />
     <PackageReference Include="System.IO.Pipelines" Version="4.5.3" />
 
   </ItemGroup>

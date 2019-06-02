@@ -4,16 +4,27 @@
     {
         public const int HEADER_SIZE = 4;
         public const int TYPE_SIZE = 1;
-        public const int CONNECTIONID_SIZE = 4;
-
+        public const int CHANNELID_SIZE = 4;
+        public const int CONNECTIONID_SIZE = 8;
         public PackageType Type { get; set; }
-        public int ConnectionId { get; set; }
-        public byte[] Data { get; set; }
+        public int ChannelId { get; set; }
+        public long ConnectionId { get; set; }
+        public byte[] Data { get; set; } = new byte[0];
     }
 
     public enum PackageType
     {
-        Register = 0x00,
-        Transfer = 0x01
+        /// <summary>
+        /// 客户端与服务端建立连接
+        /// </summary>
+        Connect = 0x00,
+        /// <summary>
+        /// 客户端，服务端传输数据
+        /// </summary>
+        Transfer = 0x01,
+        /// <summary>
+        /// 断开连接
+        /// </summary>
+        DisConnected = 0x02
     }
 }

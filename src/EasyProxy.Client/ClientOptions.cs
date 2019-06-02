@@ -1,7 +1,4 @@
 ﻿using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EasyProxy.Client
 {
@@ -9,11 +6,10 @@ namespace EasyProxy.Client
     {
         public ClientOptions Value => this;
 
-        public string ServerAddress { get; set; }
+        public string ServerAddress { get; set; } = "127.0.0.1";
 
-        /// <summary>
-        /// 用于客户端和服务端之间传输数据端口
-        /// </summary>
-        public int ProxyPort { get; set; } = 7000;
+        public int ServerPort { get; set; } = 8000;
+
+        public int ClientId { get; set; }
     }
 }
