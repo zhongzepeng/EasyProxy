@@ -23,7 +23,8 @@ namespace EasyProxy.Client.Test
             await socket.ConnectAsync(endpoint);
             var factory = new LoggerFactory();
             var logger = factory.CreateLogger("");
-            var channel = new TcpPipeChannel<ProxyPackage>(socket, logger, encoder, decoder);
+            var options = new ChannelOptions();
+            var channel = new ProxyChannel<ProxyPackage>(socket, encoder, decoder, logger, options);
 
             channel.PackageReceived += async (channl, package) =>
             {

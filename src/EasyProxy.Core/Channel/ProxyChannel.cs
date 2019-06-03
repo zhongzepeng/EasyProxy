@@ -1,195 +1,232 @@
-﻿//using EasyProxy.Core.Codec;
-//using System;
-//using System.Buffers;
-//using System.Collections.Generic;
-//using System.IO.Pipelines;
-//using System.Net.Sockets;
-//using System.Threading.Tasks;
+﻿using EasyProxy.Core.Codec;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.IO.Pipelines;
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
-//namespace EasyProxy.Core.Channel
-//{
-//    public class ProxyChannel : IChannel<ProxyPackage>
-//    {
-//        private readonly Socket socket;
-//        private readonly Pipe pipe;//用户接收数据
-//        private readonly IPackageEncoder<ProxyPackage> encoder;
-//        private readonly IPackageDecoder<ProxyPackage> decoder;
-//        private readonly Pipe sendPipe;//用于发送数据
+namespace EasyProxy.Core.Channel
+{
+    public class ProxyChannel : PipeChannel
+    {
+        protected Socket socket;
+        private List<ArraySegment<byte>> segmentsForSend;
+
+        private readonly ChannelOptions options;
+        public ProxyChannel(Socket socket, ILogger logger, ChannelOptions options) : base(logger)
+        {
+            this.socket = socket;
+            this.options = options;
+        }
+
+        protected override void OnClosed()
+        {
+            socket = null;
+            base.OnClosed();
+        }
+
+        public override void Close()
+        {
+            var tsocket = socket;
+            if (tsocket == null)
+            {
+                return;
+            }
+
+            if (Interlocked.CompareExchange(ref socket, null, tsocket) == tsocket)
+            {
+                try
+                {
+                    socket.Shutdown(SocketShutdown.Both);
+                }
+                finally
+                {
+                    tsocket.Close();
+                }
+            }
+        }
+
+        protected override async Task ProcessReadAsync()
+        {
+            var pipe = new Pipe();
+            var writting = FillPipeAsync(pipe.Writer);
+            var reading = ReadPipeAsync(pipe.Reader);
+
+            await Task.WhenAll(reading, writting);
+        }
+
+        private async Task FillPipeAsync(PipeWriter writer)
+        {
+            while (true)
+            {
+                try
+                {
+                    var bufferSize = options.ReceiveBufferSize;
+                    var maxPackageLength = options.MaxPackageLength;
+                    if (maxPackageLength > 0)
+                    {
+                        bufferSize = Math.Min(bufferSize, maxPackageLength);
+                    }
+
+                    var memory = writer.GetMemory(bufferSize);
+
+                    var read = await ReceiveAsync(memory);
+                    if (read == 0)
+                    {
+                        break;
+                    }
+                    writer.Advance(read);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Exception happened in ReceiveAsync");
+                    break;
+                }
+
+                var result = await writer.FlushAsync();
+
+                if (result.IsCompleted)
+                {
+                    break;
+                }
+            }
+            writer.Complete();
+            output.Writer.Complete();
+        }
+
+        private async Task<int> ReceiveAsync(Memory<byte> memory)
+        {
+            return await socket.ReceiveAsync(GetArrayByMemory((ReadOnlyMemory<byte>)memory), SocketFlags.None);
+        }
+
+        private ArraySegment<T> GetArrayByMemory<T>(ReadOnlyMemory<T> memory)
+        {
+            if (!MemoryMarshal.TryGetArray(memory, out var result))
+            {
+                throw new InvalidOperationException("Buffer backed by array was expected");
+            }
+
+            return result;
+        }
 
 
-//        private List<ArraySegment<byte>> segmentsForSend;
-//        public ProxyChannel(Socket socket, IPackageEncoder<ProxyPackage> encoder, IPackageDecoder<ProxyPackage> decoder)
-//        {
-//            this.encoder = encoder;
-//            this.decoder = decoder;
-//            this.socket = socket;
-//            pipe = new Pipe();
-//            sendPipe = new Pipe();
-//        }
+        protected async Task ReadPipeAsync(PipeReader reader)
+        {
+            while (true)
+            {
+                var result = await reader.ReadAsync();
+                var buffer = result.Buffer;
 
-//        public event Func<IChannel<ProxyPackage>, ProxyPackage, Task> PackageReceived;
+                var consumed = buffer.Start;
+                var examined = buffer.End;
 
-//        public event EventHandler Closed;
+                try
+                {
+                    if (result.IsCanceled)
+                    {
+                        break;
+                    }
+                    var completed = result.IsCompleted;
 
-//        public async Task SendAsync(ProxyPackage package)
-//        {
-//            var packageData = (Memory<byte>)encoder.Encode(package);
-//            var writer = sendPipe.Writer;
-//            var memory = writer.GetMemory(packageData.Length);
-//            packageData.CopyTo(memory);
-//            writer.Advance(packageData.Length);
-//            await writer.FlushAsync();
-//        }
+                    while (true)
+                    {
+                        if (buffer.Length <= 0)
+                        {
+                            break;
+                        }
 
-//        public async Task StartAsync()
-//        {
-//            _ = PipelineUtils.FillPipeAsync(socket, pipe.Writer);
-//            _ = ReadPipeAsync(pipe.Reader);
+                        consumed = await OnDataReceived(buffer);
 
-//            _ = ReadSendPipeAsync(sendPipe.Reader);
+                        buffer = buffer.Slice(consumed);
+                    }
+                    if (completed)
+                        break;
+                }
+                finally
+                {
+                    reader.AdvanceTo(consumed, examined);
+                }
+            }
+        }
 
-//            await Task.CompletedTask;
-//        }
+        protected override async Task<int> SendAsync(ReadOnlySequence<byte> buffer)
+        {
+            if (buffer.IsSingleSegment)
+            {
+                return await socket.SendAsync(GetArrayByMemory(buffer.First), SocketFlags.None);
+            }
 
-//        protected async Task OnPackageReceived(ProxyPackage package)
-//        {
-//            await PackageReceived?.Invoke(this, package);
-//        }
+            if (segmentsForSend == null)
+            {
+                segmentsForSend = new List<ArraySegment<byte>>();
+            }
+            else
+            {
+                segmentsForSend.Clear();
+            }
 
-//        private async Task ReadPipeAsync(PipeReader reader)
-//        {
-//            while (true)
-//            {
-//                var result = await reader.ReadAsync();
-//                var buffer = result.Buffer;
-//                var consumed = buffer.Start;
-//                var examined = buffer.End;
-//                try
-//                {
-//                    if (result.IsCanceled)
-//                    {
-//                        break;
-//                    }
-//                    var completed = result.IsCompleted;
+            foreach (var piece in buffer)
+            {
+                segmentsForSend.Add(GetArrayByMemory(piece));
+            }
 
-//                    while (true)
-//                    {
-//                        var package = ReadPackage(buffer, out int total);
+            return await socket.SendAsync(segmentsForSend, SocketFlags.None);
+        }
+    }
 
-//                        if (package != null)
-//                        {
-//                            await OnPackageReceived(package);
-//                            examined = buffer.GetPosition(total);
-//                            buffer = buffer.Slice(total);
-//                            if (buffer.Length == 0)
-//                            {
-//                                break;
-//                            }
-//                        }
-//                        else
-//                        {
-//                            break;
-//                        }
-//                    }
-//                    if (completed)
-//                    {
-//                        break;
-//                    }
+    public class ProxyChannel<TPackage> : ProxyChannel, IChannel<TPackage> where TPackage : class
+    {
+        private readonly IPackageEncoder<TPackage> encoder;
+        private readonly IPackageDecoder<TPackage> decoder;
+        public ProxyChannel(Socket socket, IPackageEncoder<TPackage> encoder, IPackageDecoder<TPackage> decoder, ILogger logger, ChannelOptions options)
+            : base(socket, logger, options)
+        {
+            this.encoder = encoder;
+            this.decoder = decoder;
+            DataReceived += OnDataReceived;
+        }
 
-//                }
-//                finally
-//                {
-//                    reader.AdvanceTo(consumed, examined);
-//                }
-//            }
-//            reader.Complete();
-//        }
+        public event Func<IChannel<TPackage>, TPackage, Task> PackageReceived;
 
-//        public ProxyPackage ReadPackage(ReadOnlySequence<byte> buffer, out int total)
-//        {
-//            if (ProxyPackage.HEADER_SIZE > buffer.Length)
-//            {
-//                total = 0;
-//                return null;
-//            }
+        private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)
+        {
+            var consumed = buffer.Start;
 
-//            var headerBuffer = buffer.Slice(0, ProxyPackage.HEADER_SIZE);
-//            var frameLength = headerBuffer.ToInt();
+            if (buffer.Length < ProxyPackage.HEADER_SIZE)
+            {
+                return consumed;
+            }
+            var frameLength = buffer.Slice(consumed, ProxyPackage.HEADER_SIZE).ToInt();
 
-//            total = frameLength + ProxyPackage.HEADER_SIZE;
+            if (buffer.Length < ProxyPackage.HEADER_SIZE + frameLength)
+            {
+                return consumed;
+            }
+            var body = buffer.Slice(consumed, frameLength + ProxyPackage.HEADER_SIZE).ToArray();
 
-//            if (total > buffer.Length)
-//            {
-//                total = 0;
-//                return null;
-//            }
+            var package = decoder.Decode(body);
 
-//            var bodyBuffer = buffer.Slice(ProxyPackage.HEADER_SIZE, frameLength).ToArray();
+            consumed = buffer.GetPosition(frameLength + ProxyPackage.HEADER_SIZE);
 
-//            return decoder.Decode(bodyBuffer);
-//        }
+            await OnPackageReceived(package);
 
-//        /// <summary>
-//        /// 读取sendPipe的内容，发送出去
-//        /// </summary>
-//        /// <param name="reader"></param>
-//        /// <returns></returns>
-//        private async Task ReadSendPipeAsync(PipeReader reader)
-//        {
-//            while (true)
-//            {
-//                var result = await reader.ReadAsync();
-//                if (result.IsCanceled)
-//                {
-//                    break;
-//                }
-//                var isCompleted = result.IsCompleted;
+            return consumed;
+        }
 
-//                var buffer = result.Buffer;
-//                var end = buffer.End;
-//                if (!buffer.IsEmpty)
-//                {
-//                    try
-//                    {
-//                        await SendAsync(buffer);
-//                    }
-//                    catch (Exception e)
-//                    {
-//                        reader.Complete();
-//                        return;
-//                    }
-//                }
-//                reader.AdvanceTo(end);
+        protected async Task OnPackageReceived(TPackage package)
+        {
+            await PackageReceived?.Invoke(this, package);
+        }
 
-//                if (isCompleted)
-//                { break; }
-//            }
-
-//            reader.Complete();
-//        }
-
-//        protected async ValueTask<int> SendAsync(ReadOnlySequence<byte> buffer)
-//        {
-//            if (buffer.IsSingleSegment)
-//            {
-//                return await socket.SendAsync(PipelineUtils.GetArray(buffer.First), SocketFlags.None);
-//            }
-
-//            if (segmentsForSend == null)
-//            {
-//                segmentsForSend = new List<ArraySegment<byte>>();
-//            }
-//            else
-//            {
-//                segmentsForSend.Clear();
-//            }
-
-//            foreach (var piece in buffer)
-//            {
-//                segmentsForSend.Add(PipelineUtils.GetArray(piece));
-//            }
-
-//            return await socket.SendAsync(segmentsForSend, SocketFlags.None);
-//        }
-//    }
-//}
+        public async Task SendAsync(TPackage package)
+        {
+            var writer = output.Writer;
+            await encoder.EncodeAsync(writer, package);
+            await writer.FlushAsync();
+        }
+    }
+}

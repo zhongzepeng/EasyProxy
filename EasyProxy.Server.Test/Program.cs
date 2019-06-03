@@ -30,7 +30,7 @@ namespace EasyProxy.Server.Test
             {
                 var nscoket = await socket.AcceptAsync();
                 Console.WriteLine($"连接成功：{nscoket.RemoteEndPoint}");
-                var channel = new TcpPipeChannel<ProxyPackage>(nscoket, logger, encoder, decoder);
+                var channel = new ProxyChannel<ProxyPackage>(nscoket, encoder, decoder, logger, new ChannelOptions());
                 channel.PackageReceived += async (channl, package) =>
                 {
                     Console.WriteLine($"接收到一个数据包：{package},内容：{Encoding.UTF8.GetString(package.Data)}");

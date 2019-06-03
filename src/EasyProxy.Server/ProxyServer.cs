@@ -57,7 +57,7 @@ namespace EasyProxy.Server
                 while (true)
                 {
                     var clientSocket = await socket.AcceptAsync();
-                    var proxyChannel = new TcpPipeChannel<ProxyPackage>(clientSocket, logger, encoder, decoder);
+                    var proxyChannel = new ProxyChannel<ProxyPackage>(clientSocket, encoder, decoder, logger, new ChannelOptions());
                     proxyChannel.PackageReceived += OnPackageReceived;
                     _ = proxyChannel.StartAsync();
                 }

@@ -23,7 +23,7 @@ namespace EasyProxy.Client
         private readonly int serverPort;
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
-        private TcpPipeChannel<ProxyPackage> proxyChannel;
+        private ProxyChannel<ProxyPackage> proxyChannel;
         public ProxyClientConnection(ILogger logger
             , IPAddress serverAddress
             , int serverPort
@@ -44,10 +44,10 @@ namespace EasyProxy.Client
         {
             var endpoint = new IPEndPoint(serverAddress, serverPort);
             var serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
+            var options = new ChannelOptions();
             await serverSocket.ConnectAsync(endpoint);
             logger.LogInformation($"channel start :{endpoint}");
-            proxyChannel = new TcpPipeChannel<ProxyPackage>(serverSocket, logger, encoder, decoder);
+            proxyChannel = new ProxyChannel<ProxyPackage>(serverSocket, encoder, decoder, logger, options);
 
             proxyChannel.PackageReceived += OnPackageReceived;
             proxyChannel.Closed += OnChannelClosed;
