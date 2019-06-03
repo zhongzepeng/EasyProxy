@@ -129,4 +129,27 @@ namespace EasyProxy.Core.Channel
             return result;
         }
     }
+
+    public class TcpPipeChannel : PipeChannel
+    {
+        public TcpPipeChannel(ILogger logger) : base(logger)
+        {
+
+        }
+
+        public override void Close()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override Task ProcessReadsAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override ValueTask<int> SendAsync(ReadOnlySequence<byte> buffer)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

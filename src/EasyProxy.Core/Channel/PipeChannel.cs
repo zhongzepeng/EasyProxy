@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace EasyProxy.Core.Channel
 {
+    /// <summary>
+    /// TODO：PipeChannel<TPackage> 继承PipeChannel
+    /// </summary>
+    /// <typeparam name="TPackage"></typeparam>
     public abstract class PipeChannel<TPackage> : ChannelBase<TPackage>, IChannel<TPackage>, IChannel where TPackage : class
     {
         protected IPackageEncoder<TPackage> PackageEncoder { get; }
@@ -157,6 +161,126 @@ namespace EasyProxy.Core.Channel
             consumed = buffer.GetPosition(frameLength + ProxyPackage.HEADER_SIZE);
 
             return PackageDecoder.Decode(body);
+        }
+    }
+
+
+    public abstract class PipeChannel : ChannelBase
+    {
+        protected Pipe Output { get; }
+
+        protected ILogger Logger { get; }
+
+        public PipeChannel(ILogger logger)
+        {
+            Logger = logger;
+        }
+
+
+        public override async Task StartAsync()
+        {
+            try
+            {
+                var readTask = ProcessReadsAsync();
+                var sendTask = ProcessSendsAsync();
+
+                await Task.WhenAll(readTask, sendTask);
+
+                OnClosed();
+            }
+            catch (Exception e)
+            {
+                Logger.LogError(e, "Unhandled exception in the method PipeChannel.StartAsync.");
+            }
+        }
+
+        protected abstract Task ProcessReadsAsync();
+
+        protected abstract ValueTask<int> SendAsync(ReadOnlySequence<byte> buffer);
+
+        public override async ValueTask SendAsync(ReadOnlyMemory<byte> buffer)
+        {
+            var writer = Output.Writer;
+            await writer.WriteAsync(buffer);
+            await writer.FlushAsync();
+        }
+
+        protected async Task ProcessSendsAsync()
+        {
+            var reader = Output.Reader;
+            while (true)
+            {
+                var result = await reader.ReadAsync();
+                if (result.IsCompleted)
+                {
+                    break;
+                }
+
+                var completed = result.IsCompleted;
+
+                var buffer = result.Buffer;
+                var end = buffer.End;
+
+                if (!buffer.IsEmpty)
+                {
+                    try
+                    {
+                        await SendAsync(buffer);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.LogError(e, "Exception happened in SendAsync");
+                        reader.Complete(e);
+                        return;
+                    }
+                }
+                reader.AdvanceTo(end);
+
+                if (completed)
+                {
+                    break;
+                }
+            }
+            reader.Complete();
+        }
+
+        protected async Task ReadPipeAsync(PipeReader reader)
+        {
+            while (true)
+            {
+                var result = await reader.ReadAsync();
+                var buffer = result.Buffer;
+
+                var consumed = buffer.Start;
+                var examined = buffer.End;
+
+                try
+                {
+                    if (result.IsCanceled)
+                    {
+                        break;
+                    }
+                    var completed = result.IsCompleted;
+
+                    while (true)
+                    {
+                        if (buffer.Length <= 0)
+                        {
+                            break;
+                        }
+
+                        consumed = await OnDataReceivedAsync(buffer);
+
+                        buffer = buffer.Slice(consumed);
+                    }
+                    if (completed)
+                        break;
+                }
+                finally
+                {
+                    reader.AdvanceTo(consumed, examined);
+                }
+            }
         }
     }
 }
