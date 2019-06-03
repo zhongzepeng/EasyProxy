@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -15,8 +14,7 @@ namespace EasyProxy.Client
 {
     public class ProxyClientConnection : IConnection
     {
-        const int BUFFER_SIZE = 1024;
-        private readonly Dictionary<long, Socket> serverSocketHolder;
+        private readonly Dictionary<long, IChannel> serverChannelHolder;
         private readonly ILogger logger;
         private readonly IPAddress serverAddress;
         private readonly ChannelConfig channelConfig;
@@ -37,7 +35,7 @@ namespace EasyProxy.Client
             this.serverAddress = serverAddress;
             this.encoder = encoder;
             this.decoder = decoder;
-            serverSocketHolder = new Dictionary<long, Socket>();
+            serverChannelHolder = new Dictionary<long, IChannel>();
         }
 
         public async Task StartAsync()
@@ -77,26 +75,30 @@ namespace EasyProxy.Client
         {
             if (package.Type != PackageType.Transfer)
                 return;
-            Socket nsocket;
-            if (!serverSocketHolder.ContainsKey(package.ConnectionId))
+            logger.LogDebug($"客户端接收道数据包：{package}");
+            IChannel targetChannel;
+            if (!serverChannelHolder.ContainsKey(package.ConnectionId))
             {
-                nsocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                var nsocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 var targetEp = new IPEndPoint(IPAddress.Parse(channelConfig.FrontendIp), channelConfig.FrontendPort);
                 await nsocket.ConnectAsync(targetEp);
                 var connectionId = package.ConnectionId;
                 logger.LogInformation($"与目标服务器建立连接:{connectionId},{targetEp.Port}");
-                serverSocketHolder[package.ConnectionId] = nsocket;
-                var pipe = new Pipe();
-                _ = PipelineUtils.FillPipeAsync(nsocket, pipe.Writer);
-                //将目标服务器的回复转发给服务器
-                _ = ReadPipeAsync(pipe.Reader, BUFFER_SIZE, connectionId);
+                targetChannel = new MarkedProxyChannel(connectionId, nsocket, logger, new ChannelOptions());
+                targetChannel.DataReceived += OnDataReceived;
+                serverChannelHolder[package.ConnectionId] = targetChannel;
+                _ = targetChannel.StartAsync();
+                //var pipe = new Pipe();
+                //_ = PipelineUtils.FillPipeAsync(nsocket, pipe.Writer);
+                ////将目标服务器的回复转发给服务器
+                //_ = ReadPipeAsync(pipe.Reader, BUFFER_SIZE, connectionId);
             }
             else
             {
-                nsocket = serverSocketHolder[package.ConnectionId];
+                targetChannel = serverChannelHolder[package.ConnectionId];
             }
 
-            _ = nsocket.SendAsync(package.Data, SocketFlags.None);
+            await targetChannel.SendAsync(package.Data);
         }
 
         private async Task TransferAsync(long connectionId, byte[] data)
@@ -116,35 +118,13 @@ namespace EasyProxy.Client
         {
         }
 
-        private async Task ReadPipeAsync(PipeReader pipeReader, int bufferLength, long connectionId)
+        private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)
         {
-            while (true)
-            {
-                var result = await pipeReader.ReadAsync();
-
-                if (result.IsCanceled)
-                {
-                    break;
-                }
-                var isCompleted = result.IsCompleted;
-
-                var buffer = result.Buffer;
-
-                var total = Math.Min(bufferLength, buffer.Length);
-
-                var array = buffer.Slice(0, total).ToArray();
-
-                var examined = buffer.GetPosition(total);
-
-                pipeReader.AdvanceTo(buffer.Start, examined);
-
-                await TransferAsync(connectionId, array);
-
-                if (isCompleted)
-                { break; }
-            }
-
-            pipeReader.Complete();
+            var markedChannel = channel as MarkedProxyChannel;
+            var total = buffer.Length;
+            var data = buffer.Slice(0, total).ToArray();
+            await TransferAsync(markedChannel.Mark, data);
+            return buffer.GetPosition(total);
         }
     }
 }

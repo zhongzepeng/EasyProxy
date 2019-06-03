@@ -14,14 +14,13 @@ namespace EasyProxy.Server
 {
     public class ProxyServerConnection : IConnection
     {
-        const int BUFFER_SIZE = 1024;
         private readonly Socket socket;
         private readonly int backendPort;
         private readonly ILogger logger;
         private readonly IIdGenerator idGenerator;
         private readonly IChannel<ProxyPackage> channel;
         private readonly int channelId;
-        private readonly ConcurrentDictionary<long, Socket> clientSocketHolder;
+        private readonly ConcurrentDictionary<long, IChannel> clientChannelHolder;
         public ProxyServerConnection(int channelId, IChannel<ProxyPackage> channel, int port, ILogger logger, IIdGenerator idGenerator)
         {
             this.channelId = channelId;
@@ -32,7 +31,7 @@ namespace EasyProxy.Server
             backendPort = port;
             this.logger = logger;
             this.idGenerator = idGenerator;
-            clientSocketHolder = new ConcurrentDictionary<long, Socket>();
+            clientChannelHolder = new ConcurrentDictionary<long, IChannel>();
         }
 
         public async Task StartAsync()
@@ -50,17 +49,27 @@ namespace EasyProxy.Server
                     var inputPipe = new Pipe();
                     var clientSocket = await socket.AcceptAsync();
                     var connectionId = idGenerator.Next();
-                    logger.LogInformation($"服务端接收道请求：{clientSocket.RemoteEndPoint},connectionId:{connectionId},socketCount:{clientSocketHolder.Count + 1}");
-                    clientSocketHolder.TryAdd(connectionId, clientSocket);
-                    _ = PipelineUtils.FillPipeAsync(clientSocket, inputPipe.Writer);
+                    logger.LogInformation($"服务端接收道请求：{clientSocket.RemoteEndPoint},connectionId:{connectionId}");
 
-                    _ = ReadPipeAsync(inputPipe.Reader, BUFFER_SIZE, connectionId);
+                    var channel = new MarkedProxyChannel(connectionId, clientSocket, logger, new ChannelOptions());
 
+                    channel.DataReceived += OnDataReceived;
+
+                    clientChannelHolder.TryAdd(connectionId, channel);
+
+                    _ = channel.StartAsync();
                 }
             });
         }
 
-
+        private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)
+        {
+            var markedChannel = channel as MarkedProxyChannel;
+            var total = buffer.Length;
+            var data = buffer.Slice(0, total).ToArray();
+            await TransferAsync(markedChannel.Mark, data);
+            return buffer.GetPosition(total);
+        }
 
         public Task StopAsync()
         {
@@ -75,9 +84,9 @@ namespace EasyProxy.Server
         {
             if (package.Type != PackageType.Transfer)
                 return;
-            var socket = clientSocketHolder[package.ConnectionId];
+            var existsChannel = clientChannelHolder[package.ConnectionId];
             logger.LogInformation($"收到客户端发送的数据包：{package}");
-            _ = socket.SendAsync(package.Data, SocketFlags.None);
+            await existsChannel.SendAsync(package.Data);
         }
 
         private async Task TransferAsync(long connectionId, byte[] data)
@@ -91,42 +100,6 @@ namespace EasyProxy.Server
             };
             logger.LogInformation($"服务端发送数据包到客户端：{package}");
             await channel.SendAsync(package);
-        }
-
-        private async Task ReadPipeAsync(PipeReader pipeReader, int bufferLength, long connectionId)
-        {
-            while (true)
-            {
-                var result = await pipeReader.ReadAsync();
-
-                if (result.IsCanceled)
-                {
-                    break;
-                }
-                var isCompleted = result.IsCompleted;
-
-                var buffer = result.Buffer;
-
-                var total = Math.Min(bufferLength, buffer.Length);
-
-                var array = buffer.Slice(0, total).ToArray();
-
-                if (array.Length == 0)
-                {
-                    continue;
-                }
-
-                await TransferAsync(connectionId, array);
-
-                var examined = buffer.GetPosition(total);
-
-                pipeReader.AdvanceTo(buffer.Start, examined);
-
-                if (isCompleted)
-                { break; }
-            }
-
-            pipeReader.Complete();
         }
     }
 }
