@@ -57,7 +57,7 @@ namespace EasyProxy.Server
                 while (true)
                 {
                     var clientSocket = await socket.AcceptAsync();
-                    var proxyChannel = new ProxyChannel(clientSocket, encoder, decoder);
+                    var proxyChannel = new TcpPipeChannel<ProxyPackage>(clientSocket, logger, encoder, decoder);
                     proxyChannel.PackageReceived += OnPackageReceived;
                     _ = proxyChannel.StartAsync();
                 }
@@ -74,7 +74,6 @@ namespace EasyProxy.Server
                     var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
                     await connection.StartAsync();
                     break;
-
                 case PackageType.DisConnected:
                     ProxyServerChannelManager.RemoveChannel(package.ChannelId);
                     break;

@@ -31,7 +31,7 @@ namespace EasyProxy.Client
 
             //Task.WaitAll(task);
 
-            Console.ReadKey();
+            Console.Read();
         }
 
         static IConfiguration BuildConfiguration()

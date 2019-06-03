@@ -9,7 +9,6 @@ namespace EasyProxy.Core.Common
 
         public long Next()
         {
-            Console.WriteLine($"currentId:{current},{Thread.CurrentThread.ManagedThreadId}");
             return Interlocked.Increment(ref current);
         }
     }

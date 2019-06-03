@@ -9,6 +9,9 @@ namespace EasyProxy.Core.Codec
             var pack = new ProxyPackage();
             var pos = 0;
 
+            var framelength = span.Slice(pos, ProxyPackage.HEADER_SIZE).ToInt();
+            pos += ProxyPackage.HEADER_SIZE;
+
             pack.Type = (PackageType)span.Slice(pos, ProxyPackage.TYPE_SIZE)[0];
             pos += ProxyPackage.TYPE_SIZE;
 

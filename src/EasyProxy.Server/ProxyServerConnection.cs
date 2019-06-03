@@ -5,11 +5,9 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Server
@@ -78,8 +76,8 @@ namespace EasyProxy.Server
             if (package.Type != PackageType.Transfer)
                 return;
             var socket = clientSocketHolder[package.ConnectionId];
-            logger.LogInformation($"收到客户端发送的数据包：{package.Data.Length},{socket.RemoteEndPoint},{package.ConnectionId}");
-            await socket.SendAsync(package.Data, SocketFlags.None);
+            logger.LogInformation($"收到客户端发送的数据包：{package}");
+            _ = socket.SendAsync(package.Data, SocketFlags.None);
         }
 
         private async Task TransferAsync(long connectionId, byte[] data)
@@ -91,7 +89,7 @@ namespace EasyProxy.Server
                 Data = data,
                 Type = PackageType.Transfer
             };
-            logger.LogInformation($"发送数据到客户端，connectionId：{connectionId},length：{data.Length}");
+            logger.LogInformation($"服务端发送数据包到客户端：{package}");
             await channel.SendAsync(package);
         }
 

@@ -23,7 +23,7 @@ namespace EasyProxy.Client
         private readonly int serverPort;
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
-        private ProxyChannel proxyChannel;
+        private TcpPipeChannel<ProxyPackage> proxyChannel;
         public ProxyClientConnection(ILogger logger
             , IPAddress serverAddress
             , int serverPort
@@ -47,12 +47,12 @@ namespace EasyProxy.Client
 
             await serverSocket.ConnectAsync(endpoint);
             logger.LogInformation($"channel start :{endpoint}");
-            proxyChannel = new ProxyChannel(serverSocket, encoder, decoder);
+            proxyChannel = new TcpPipeChannel<ProxyPackage>(serverSocket, logger, encoder, decoder);
 
             proxyChannel.PackageReceived += OnPackageReceived;
             proxyChannel.Closed += OnChannelClosed;
 
-            await proxyChannel.StartAsync();
+            _ = proxyChannel.StartAsync();
 
             await proxyChannel.SendAsync(new ProxyPackage
             {
@@ -96,7 +96,7 @@ namespace EasyProxy.Client
                 nsocket = serverSocketHolder[package.ConnectionId];
             }
 
-            await nsocket.SendAsync(package.Data, SocketFlags.None);
+            _ = nsocket.SendAsync(package.Data, SocketFlags.None);
         }
 
         private async Task TransferAsync(long connectionId, byte[] data)
@@ -108,7 +108,7 @@ namespace EasyProxy.Client
                 Data = data,
                 Type = PackageType.Transfer
             };
-            logger.LogInformation($"目标服务器响应数据了：{package.Data.Length},connectionId:{connectionId}");
+            logger.LogInformation($"发送数据包到服务端：{package}");
             await proxyChannel.SendAsync(package);
         }
 

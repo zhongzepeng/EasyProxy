@@ -1,15 +1,22 @@
-﻿using EasyProxy.Core.Codec;
-using System;
+﻿using System;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Core.Channel
 {
-    public interface IChannel<TPackage> where TPackage : class
+    public interface IChannel
     {
-        event Func<IChannel<TPackage>, TPackage, Task> PackageReceived;
+        Task StartAsync();
+
+        ValueTask SendAsync(ReadOnlyMemory<byte> data);
 
         event EventHandler Closed;
-        Task StartAsync();
+
+        void Close();
+    }
+
+    public interface IChannel<TPackage> : IChannel where TPackage : class
+    {
+        event Func<IChannel<TPackage>, TPackage, Task> PackageReceived;
         Task SendAsync(TPackage package);
     }
 }

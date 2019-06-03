@@ -1,16 +1,52 @@
 ﻿using EasyProxy.Core;
+using EasyProxy.Core.Channel;
 using EasyProxy.Core.Codec;
-using EasyProxy.Core.Config;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EasyProxy.Client.Test
 {
     class Program
     {
-        static async System.Threading.Tasks.Task Main(string[] args)
+        static async Task Main(string[] args)
         {
+            var encoder = new ProxyPackageEncoder();
+            var decoder = new ProxyPackageDecoder();
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
+            var endpoint = new IPEndPoint(IPAddress.Loopback, 9091);
+
+            await socket.ConnectAsync(endpoint);
+            var factory = new LoggerFactory();
+            var logger = factory.CreateLogger("");
+            var channel = new TcpPipeChannel<ProxyPackage>(socket, logger, encoder, decoder);
+
+            channel.PackageReceived += async (channl, package) =>
+            {
+                Console.WriteLine($"接收到一个数据包：{package},内容：{Encoding.UTF8.GetString(package.Data)}");
+                await Task.CompletedTask;
+            };
+
+            _ = channel.StartAsync();
+
+            while (true)
+            {
+                var line = Console.ReadLine();
+                var package = new ProxyPackage
+                {
+                    ChannelId = 1,
+                    ConnectionId = 100,
+                    Type = PackageType.Transfer,
+                    Data = Encoding.UTF8.GetBytes(line)
+                };
+
+
+                await channel.SendAsync(package);
+            }
         }
     }
 }

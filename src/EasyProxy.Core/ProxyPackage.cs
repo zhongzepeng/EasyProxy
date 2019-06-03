@@ -10,6 +10,8 @@
         public int ChannelId { get; set; }
         public long ConnectionId { get; set; }
         public byte[] Data { get; set; } = new byte[0];
+
+        public override string ToString() => $"Type:{Type},ChannelId:{ChannelId},ConnectionId:{ConnectionId},DataLength:{Data.Length}";
     }
 
     public enum PackageType

@@ -13,7 +13,7 @@ namespace EasyProxy.Core.Config
         {
             var sb = new SqliteConnectionStringBuilder
             {
-                DataSource = @"G:\\easyproxy.db"
+                DataSource = @"E:\\easyproxy.db"
             };
             var conn = new SQLiteConnection(sb.ToString());
             await conn.OpenAsync();
