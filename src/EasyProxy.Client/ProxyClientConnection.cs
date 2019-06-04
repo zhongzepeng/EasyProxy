@@ -75,7 +75,7 @@ namespace EasyProxy.Client
         {
             if (package.Type != PackageType.Transfer)
                 return;
-            logger.LogDebug($"客户端接收道数据包：{package}");
+            logger.LogWarning($"客户端接收道数据包：{package}");
             IChannel targetChannel;
             if (!serverChannelHolder.ContainsKey(package.ConnectionId))
             {
@@ -88,10 +88,6 @@ namespace EasyProxy.Client
                 targetChannel.DataReceived += OnDataReceived;
                 serverChannelHolder[package.ConnectionId] = targetChannel;
                 _ = targetChannel.StartAsync();
-                //var pipe = new Pipe();
-                //_ = PipelineUtils.FillPipeAsync(nsocket, pipe.Writer);
-                ////将目标服务器的回复转发给服务器
-                //_ = ReadPipeAsync(pipe.Reader, BUFFER_SIZE, connectionId);
             }
             else
             {
@@ -112,6 +108,7 @@ namespace EasyProxy.Client
             };
             logger.LogInformation($"发送数据包到服务端：{package}");
             await proxyChannel.SendAsync(package);
+            //await Task.CompletedTask;
         }
 
         private void OnChannelClosed(object sender, EventArgs e)

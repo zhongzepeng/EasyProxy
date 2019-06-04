@@ -12,9 +12,12 @@ namespace EasyProxy.Core.Channel
 
         protected readonly ILogger logger;
 
+        protected readonly object lockObj = new object();
+
         public PipeChannel(ILogger logger)
         {
             output = new Pipe();
+
             this.logger = logger;
         }
 
@@ -33,6 +36,8 @@ namespace EasyProxy.Core.Channel
             {
                 var readTask = ProcessReadAsync();
                 var sendTask = ProcessSendAsync();
+
+                logger.LogWarning($"channel start success");
 
                 await Task.WhenAll(readTask, sendTask);
 

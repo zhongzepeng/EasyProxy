@@ -225,6 +225,7 @@ namespace EasyProxy.Core.Channel
         public async Task SendAsync(TPackage package)
         {
             var writer = output.Writer;
+            logger.LogWarning($"sendasync:{package}");
             await encoder.EncodeAsync(writer, package);
             await writer.FlushAsync();
         }

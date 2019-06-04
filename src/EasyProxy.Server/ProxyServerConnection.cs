@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -38,7 +37,7 @@ namespace EasyProxy.Server
         {
             var endpoint = new IPEndPoint(IPAddress.Any, backendPort);
             socket.Bind(endpoint);
-            socket.Listen(20);
+            socket.Listen(200);
 
             await Task.Factory.StartNew(async () =>
             {
@@ -46,11 +45,9 @@ namespace EasyProxy.Server
 
                 while (true)
                 {
-                    var inputPipe = new Pipe();
                     var clientSocket = await socket.AcceptAsync();
                     var connectionId = idGenerator.Next();
                     logger.LogInformation($"服务端接收道请求：{clientSocket.RemoteEndPoint},connectionId:{connectionId}");
-
                     var channel = new MarkedProxyChannel(connectionId, clientSocket, logger, new ChannelOptions());
 
                     channel.DataReceived += OnDataReceived;
@@ -65,6 +62,7 @@ namespace EasyProxy.Server
         private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)
         {
             var markedChannel = channel as MarkedProxyChannel;
+            logger.LogWarning($"服务器接收到外网数据：{markedChannel.Mark}");
             var total = buffer.Length;
             var data = buffer.Slice(0, total).ToArray();
             await TransferAsync(markedChannel.Mark, data);
@@ -100,6 +98,7 @@ namespace EasyProxy.Server
             };
             logger.LogInformation($"服务端发送数据包到客户端：{package}");
             await channel.SendAsync(package);
+            //await Task.CompletedTask;
         }
     }
 }

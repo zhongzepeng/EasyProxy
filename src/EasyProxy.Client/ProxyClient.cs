@@ -5,9 +5,7 @@ using EasyProxy.Core.Config;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Client
@@ -15,7 +13,6 @@ namespace EasyProxy.Client
     public class ProxyClient : IProxyHost
     {
         private readonly ILogger<ProxyClient> logger;
-
         private readonly ClientOptions options;
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
