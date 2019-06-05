@@ -3,6 +3,7 @@ using EasyProxy.Core.Channel;
 using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
 using EasyProxy.Core.Config;
+using EasyProxy.Core.Model;
 using EasyProxy.Server.Dashboard;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
@@ -69,15 +70,61 @@ namespace EasyProxy.Server
             switch (package.Type)
             {
                 case PackageType.Connect:
-                    var channelConfig = await configHelper.GetChannelAsync(package.ChannelId);
-                    ProxyServerChannelManager.AddChannel(package.ChannelId, channel);
-                    var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
-                    await connection.StartAsync();
+                    await ProcessConnect(channel, package);
                     break;
                 case PackageType.DisConnected:
-                    ProxyServerChannelManager.RemoveChannel(package.ChannelId);
+                    await ProcessDisConnected(package);
+                    break;
+                case PackageType.Authentication:
+                    await ProcessAuthentication(channel, package);
                     break;
             }
+        }
+
+        private async Task ProcessAuthentication(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
+            var model = package.Data.BytesToObject<AuthenticationModel>();
+
+            var pass = await configHelper.CheckClientAsync(model.ClientId, model.SecretKey);
+
+            if (!pass)
+            {
+                await channel.SendAsync(new ProxyPackage
+                {
+                    Data = new AuthenticationResult
+                    {
+                        Success = false,
+                        Message = "ClientId not exits or SecretKey not correct"
+                    }.ObjectToBytes(),
+                    Type = PackageType.Authentication
+                });
+            }
+            else
+            {
+                await channel.SendAsync(new ProxyPackage
+                {
+                    Data = new AuthenticationResult
+                    {
+                        Success = true,
+                        Channels = await configHelper.GetChannelsAsync(model.ClientId)
+                    }.ObjectToBytes(),
+                    Type = PackageType.Authentication
+                });
+            }
+        }
+
+        private async Task ProcessConnect(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
+            var channelConfig = await configHelper.GetChannelAsync(package.ChannelId);
+            ProxyServerChannelManager.AddChannel(package.ChannelId, channel);
+            var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
+            await connection.StartAsync();
+        }
+
+        private async Task ProcessDisConnected(ProxyPackage package)
+        {
+            ProxyServerChannelManager.RemoveChannel(package.ChannelId);
+            await Task.CompletedTask;
         }
 
         private async Task StartDashboardAsync()

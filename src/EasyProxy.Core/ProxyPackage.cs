@@ -27,6 +27,10 @@
         /// <summary>
         /// 断开连接
         /// </summary>
-        DisConnected = 0x02
+        DisConnected = 0x02,
+        /// <summary>
+        /// 客户端认证【认证成功后，返回当前clientId的所有channel配置】 
+        /// </summary>
+        Authentication = 0x03
     }
 }

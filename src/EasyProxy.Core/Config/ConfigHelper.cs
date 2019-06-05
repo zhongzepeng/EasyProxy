@@ -111,5 +111,17 @@ namespace EasyProxy.Core.Config
             return (int)(long)await conn.ExecuteScalarAsync("select last_insert_rowid() from Channel");
         }
 
+
+        public async Task<bool> CheckClientAsync(int clientId, string secretKey)
+        {
+            var client = await GetClientAsync(clientId);
+
+            if (client == null)
+            {
+                return false;
+            }
+
+            return client.SecretKey == secretKey;
+        }
     }
 }

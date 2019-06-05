@@ -21,6 +21,7 @@ namespace EasyProxy.Client
         private readonly int serverPort;
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
+        private readonly ChannelOptions channelOptions;
         private ProxyChannel<ProxyPackage> proxyChannel;
         public ProxyClientConnection(ILogger logger
             , IPAddress serverAddress
@@ -35,6 +36,7 @@ namespace EasyProxy.Client
             this.serverAddress = serverAddress;
             this.encoder = encoder;
             this.decoder = decoder;
+            channelOptions = new ChannelOptions();
             serverChannelHolder = new Dictionary<long, IChannel>();
         }
 
@@ -42,16 +44,12 @@ namespace EasyProxy.Client
         {
             var endpoint = new IPEndPoint(serverAddress, serverPort);
             var serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            var options = new ChannelOptions();
             await serverSocket.ConnectAsync(endpoint);
             logger.LogInformation($"channel start :{endpoint}");
-            proxyChannel = new ProxyChannel<ProxyPackage>(serverSocket, encoder, decoder, logger, options);
-
+            proxyChannel = new ProxyChannel<ProxyPackage>(serverSocket, encoder, decoder, logger, channelOptions);
             proxyChannel.PackageReceived += OnPackageReceived;
             proxyChannel.Closed += OnChannelClosed;
-
             _ = proxyChannel.StartAsync();
-
             await proxyChannel.SendAsync(new ProxyPackage
             {
                 ChannelId = channelConfig.ChannelId,
@@ -84,7 +82,7 @@ namespace EasyProxy.Client
                 await nsocket.ConnectAsync(targetEp);
                 var connectionId = package.ConnectionId;
                 logger.LogInformation($"与目标服务器建立连接:{connectionId},{targetEp.Port}");
-                targetChannel = new MarkedProxyChannel(connectionId, nsocket, logger, new ChannelOptions());
+                targetChannel = new MarkedProxyChannel(connectionId, nsocket, logger, channelOptions);
                 targetChannel.DataReceived += OnDataReceived;
                 serverChannelHolder[package.ConnectionId] = targetChannel;
                 _ = targetChannel.StartAsync();
@@ -108,7 +106,6 @@ namespace EasyProxy.Client
             };
             logger.LogInformation($"发送数据包到服务端：{package}");
             await proxyChannel.SendAsync(package);
-            //await Task.CompletedTask;
         }
 
         private void OnChannelClosed(object sender, EventArgs e)

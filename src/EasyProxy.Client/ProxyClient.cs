@@ -1,11 +1,13 @@
 ﻿using EasyProxy.Core;
+using EasyProxy.Core.Channel;
 using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
-using EasyProxy.Core.Config;
+using EasyProxy.Core.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Client
@@ -16,38 +18,76 @@ namespace EasyProxy.Client
         private readonly ClientOptions options;
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
-        private readonly ConfigHelper configHelper;
-
+        private readonly ChannelOptions channelOptions;
         public ProxyClient(IOptions<ClientOptions> options
             , ILogger<ProxyClient> logger
-            , ConfigHelper configHelper
             , IPackageEncoder<ProxyPackage> encoder
             , IPackageDecoder<ProxyPackage> decoder)
         {
-            this.configHelper = configHelper;
             this.logger = logger;
             this.options = options?.Value;
             Checker.NotNull(this.options);
             this.encoder = encoder;
             this.decoder = decoder;
+            channelOptions = new ChannelOptions();
         }
 
         public async Task StartAsync()
         {
-            var channels = await configHelper.GetChannelsAsync(options.ClientId);
+            await StartAuthenticationAsync();
+        }
 
-            if (channels.Count == 0)
+        private async Task StartAuthenticationAsync()
+        {
+            var endpoint = new IPEndPoint(IPAddress.Parse(options.ServerAddress), options.ServerPort);
+            var authSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            await authSocket.ConnectAsync(endpoint);
+            var authChannel = new ProxyChannel<ProxyPackage>(authSocket, encoder, decoder, logger, channelOptions);
+
+            authChannel.PackageReceived += OnAuthPackageReceived;
+
+            authChannel.Closed += OnAuthChannelClosed;
+
+            _ = authChannel.StartAsync();
+
+            await authChannel.SendAsync(new ProxyPackage
             {
-                logger.LogInformation("not channel in config");
+                Type = PackageType.Authentication,
+                Data = new AuthenticationModel
+                {
+                    ClientId = options.ClientId,
+                    SecretKey = options.SecretKey
+                }.ObjectToBytes()
+            });
+        }
+
+        private async Task OnAuthPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
+            logger.LogInformation("授权消息");
+            var result = package.Data.BytesToObject<AuthenticationResult>();
+
+            if (!result.Success)
+            {
+                logger.LogInformation(result.Message);
                 return;
             }
-            foreach (var channel in channels)
+            var channels = result.Channels;
+            if (channels.Count == 0)
             {
-                logger.LogInformation($"channel:{channel.ClientId}");
-                var connection = new ProxyClientConnection(logger, IPAddress.Parse(options.ServerAddress), options.ServerPort, channel, encoder, decoder);
+                logger.LogInformation("Not channel in config");
+                return;
+            }
+            foreach (var c in channels)
+            {
+                var connection = new ProxyClientConnection(logger, IPAddress.Parse(options.ServerAddress), options.ServerPort, c, encoder, decoder);
                 _ = connection.StartAsync();
             }
             await Task.CompletedTask;
+        }
+
+        private void OnAuthChannelClosed(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         public Task StopAsync()
