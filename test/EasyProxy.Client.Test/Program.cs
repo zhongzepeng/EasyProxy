@@ -33,21 +33,23 @@ namespace EasyProxy.Client.Test
             };
 
             _ = channel.StartAsync();
-
-            while (true)
+            var c = 0;
+            while (c < 100000)
             {
-                var line = Console.ReadLine();
                 var package = new ProxyPackage
                 {
                     ChannelId = 1,
                     ConnectionId = 100,
                     Type = PackageType.Transfer,
-                    Data = Encoding.UTF8.GetBytes(line)
+                    Data = Encoding.UTF8.GetBytes(c.ToString())
                 };
 
-
                 await channel.SendAsync(package);
+
+                c++;
             }
+
+            Console.ReadKey();
         }
     }
 }

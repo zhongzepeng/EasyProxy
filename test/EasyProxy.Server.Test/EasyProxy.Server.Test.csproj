@@ -7,17 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="easyproxy.db" />
+    <PackageReference Include="System.IO.Pipelines" Version="4.5.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="easyproxy.db">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\src\EasyProxy.Core\EasyProxy.Core.csproj" />
+    <ProjectReference Include="..\..\src\EasyProxy.Core\EasyProxy.Core.csproj" />
   </ItemGroup>
 
 </Project>

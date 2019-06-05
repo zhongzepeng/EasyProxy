@@ -139,7 +139,13 @@ namespace EasyProxy.Core.Channel
                             break;
                         }
 
-                        consumed = await OnDataReceived(buffer);
+                        var curConsumed = await OnDataReceived(buffer);
+
+                        if (consumed.Equals(curConsumed))//长度不够了，直接退出循环
+                        {
+                            break;
+                        }
+                        consumed = curConsumed;
 
                         buffer = buffer.Slice(consumed);
                     }
