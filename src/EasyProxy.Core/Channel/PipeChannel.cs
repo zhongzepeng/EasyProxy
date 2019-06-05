@@ -37,8 +37,6 @@ namespace EasyProxy.Core.Channel
                 var readTask = ProcessReadAsync();
                 var sendTask = ProcessSendAsync();
 
-                logger.LogWarning($"channel start success");
-
                 await Task.WhenAll(readTask, sendTask);
 
                 OnClosed();

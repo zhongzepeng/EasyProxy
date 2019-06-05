@@ -15,12 +15,23 @@ namespace EasyProxy.Core.Channel
     {
         protected Socket socket;
         private List<ArraySegment<byte>> segmentsForSend;
-
         private readonly ChannelOptions options;
+        private readonly CancellationToken cancellationToken;
+        private readonly CancellationTokenSource cancellationTokenSource;
         public ProxyChannel(Socket socket, ILogger logger, ChannelOptions options) : base(logger)
         {
             this.socket = socket;
             this.options = options;
+            cancellationTokenSource = new CancellationTokenSource();
+            cancellationToken = cancellationTokenSource.Token;
+        }
+
+        protected bool IsClosed
+        {
+            get
+            {
+                return cancellationToken.IsCancellationRequested;
+            }
         }
 
         protected override void OnClosed()
@@ -31,6 +42,7 @@ namespace EasyProxy.Core.Channel
 
         public override void Close()
         {
+            cancellationTokenSource.Cancel();
             var tsocket = socket;
             if (tsocket == null)
             {
@@ -61,7 +73,7 @@ namespace EasyProxy.Core.Channel
 
         private async Task FillPipeAsync(PipeWriter writer)
         {
-            while (true)
+            while (!IsClosed)
             {
                 try
                 {
@@ -116,7 +128,7 @@ namespace EasyProxy.Core.Channel
 
         protected async Task ReadPipeAsync(PipeReader reader)
         {
-            while (true)
+            while (!IsClosed)
             {
                 var result = await reader.ReadAsync();
                 var buffer = result.Buffer;
@@ -231,7 +243,6 @@ namespace EasyProxy.Core.Channel
         public async Task SendAsync(TPackage package)
         {
             var writer = output.Writer;
-            logger.LogWarning($"sendasync:{package}");
             await encoder.EncodeAsync(writer, package);
             await writer.FlushAsync();
         }

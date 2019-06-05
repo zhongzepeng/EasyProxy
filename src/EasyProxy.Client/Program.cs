@@ -29,8 +29,6 @@ namespace EasyProxy.Client
 
             await client.StartAsync();
 
-            //Task.WaitAll(task);
-
             Console.Read();
         }
 

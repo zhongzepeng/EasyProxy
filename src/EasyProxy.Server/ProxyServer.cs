@@ -9,6 +9,7 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -60,9 +61,16 @@ namespace EasyProxy.Server
                     var clientSocket = await socket.AcceptAsync();
                     var proxyChannel = new ProxyChannel<ProxyPackage>(clientSocket, encoder, decoder, logger, new ChannelOptions());
                     proxyChannel.PackageReceived += OnPackageReceived;
+                    proxyChannel.Closed += OnProxyClosed;
                     _ = proxyChannel.StartAsync();
+                    logger.LogInformation($"client connected");
                 }
             });
+        }
+
+        private void OnProxyClosed(object sender, EventArgs e)
+        {
+            logger.LogInformation("Auth channel closed");
         }
 
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
@@ -101,12 +109,13 @@ namespace EasyProxy.Server
             }
             else
             {
+                var channels = await configHelper.GetChannelsAsync(model.ClientId);
                 await channel.SendAsync(new ProxyPackage
                 {
                     Data = new AuthenticationResult
                     {
                         Success = true,
-                        Channels = await configHelper.GetChannelsAsync(model.ClientId)
+                        Channels = channels
                     }.ObjectToBytes(),
                     Type = PackageType.Authentication
                 });
@@ -116,14 +125,15 @@ namespace EasyProxy.Server
         private async Task ProcessConnect(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
             var channelConfig = await configHelper.GetChannelAsync(package.ChannelId);
-            ProxyServerChannelManager.AddChannel(package.ChannelId, channel);
+            //ProxyServerChannelManager.AddChannel(package.ChannelId, channel);
+            logger.LogInformation($"connected:{package.ChannelId},{package.ConnectionId}");
             var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
             await connection.StartAsync();
         }
 
         private async Task ProcessDisConnected(ProxyPackage package)
         {
-            ProxyServerChannelManager.RemoveChannel(package.ChannelId);
+            //ProxyServerChannelManager.RemoveChannel(package.ChannelId);
             await Task.CompletedTask;
         }
 
@@ -133,9 +143,8 @@ namespace EasyProxy.Server
             await WebHost.CreateDefaultBuilder().UseStartup<Startup>().Build().RunAsync();
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
-            throw new System.NotImplementedException();
         }
     }
 }

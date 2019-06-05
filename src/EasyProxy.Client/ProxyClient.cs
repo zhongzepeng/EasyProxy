@@ -37,6 +37,10 @@ namespace EasyProxy.Client
             await StartAuthenticationAsync();
         }
 
+        /// <summary>
+        /// 启动一个通道，用于客户端和服务端做认证用【TODO：可以保持连接，使得不用重启客户端配置修改能够生效】
+        /// </summary>
+        /// <returns></returns>
         private async Task StartAuthenticationAsync()
         {
             var endpoint = new IPEndPoint(IPAddress.Parse(options.ServerAddress), options.ServerPort);
@@ -61,14 +65,13 @@ namespace EasyProxy.Client
             });
         }
 
-        private async Task OnAuthPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
+        private async Task OnAuthPackageReceived(IChannel<ProxyPackage> authChannel, ProxyPackage package)
         {
-            logger.LogInformation("授权消息");
             var result = package.Data.BytesToObject<AuthenticationResult>();
 
             if (!result.Success)
             {
-                logger.LogInformation(result.Message);
+                logger.LogInformation($"Authentication fail,message:{result.Message}");
                 return;
             }
             var channels = result.Channels;
@@ -77,22 +80,24 @@ namespace EasyProxy.Client
                 logger.LogInformation("Not channel in config");
                 return;
             }
-            foreach (var c in channels)
+            foreach (var channel in channels)
             {
-                var connection = new ProxyClientConnection(logger, IPAddress.Parse(options.ServerAddress), options.ServerPort, c, encoder, decoder);
+                var connection = new ProxyClientConnection(logger, IPAddress.Parse(options.ServerAddress), options.ServerPort, channel, encoder, decoder);
                 _ = connection.StartAsync();
+                logger.LogInformation($"Start channel:{channel.ChannelId},targetIp:{channel.FrontendIp},targetPort:{channel.FrontendPort},serverPort:{channel.BackendPort}");
             }
+
+            authChannel.Close();
             await Task.CompletedTask;
         }
 
         private void OnAuthChannelClosed(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
-            throw new NotImplementedException();
+
         }
     }
 }
