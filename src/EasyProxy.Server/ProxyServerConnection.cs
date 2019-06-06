@@ -58,8 +58,8 @@ namespace EasyProxy.Server
 
         private void OnMarkedProxyChannelClosed(object sender, EventArgs e)
         {
-            logger.LogInformation("error remove");
             var channel = sender as MarkedProxyChannel;
+            channel.Close();
             clientChannelHolder.TryRemove(channel.Mark, out _);
         }
 
@@ -74,6 +74,7 @@ namespace EasyProxy.Server
 
         public async Task StopAsync()
         {
+            await Task.CompletedTask;
         }
 
         private void OnChannelClosed(object sender, EventArgs e)
@@ -82,10 +83,28 @@ namespace EasyProxy.Server
 
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
-            if (package.Type != PackageType.Transfer)
-                return;
+            switch (package.Type)
+            {
+                case PackageType.Transfer:
+                    await ProcessTransfer(channel, package);
+                    break;
+                case PackageType.Disconnect:
+                    await ProcessDisconnect(channel, package);
+                    break;
+            }
+        }
+
+        private async Task ProcessTransfer(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
             var existsChannel = clientChannelHolder[package.ConnectionId];
             await existsChannel.SendAsync(package.Data);
+        }
+
+        private async Task ProcessDisconnect(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
+            var existsChannel = clientChannelHolder[package.ConnectionId];
+            existsChannel?.Close();
+            await Task.CompletedTask;
         }
 
         private async Task TransferAsync(long connectionId, byte[] data)

@@ -36,30 +36,39 @@ namespace EasyProxy.Core.Channel
 
         protected override void OnClosed()
         {
-            socket = null;
+            //socket = null;
             base.OnClosed();
         }
 
         public override void Close()
         {
-            cancellationTokenSource.Cancel();
-            var tsocket = socket;
-            if (tsocket == null)
-            {
-                return;
-            }
+            //var tsocket = socket;
+            //if (tsocket == null)
+            //{
+            //    return;
+            //}
 
-            if (Interlocked.CompareExchange(ref socket, null, tsocket) == tsocket)
+            //if (Interlocked.CompareExchange(ref socket, null, tsocket) == tsocket)
+            //{
+            //    try
+            //    {
+            //        socket?.Shutdown(SocketShutdown.Both);
+            //    }
+            //    finally
+            //    {
+            //        tsocket?.Close();
+            //    }
+            //}
+            try
             {
-                try
-                {
-                    socket.Shutdown(SocketShutdown.Both);
-                }
-                finally
-                {
-                    tsocket.Close();
-                }
+                socket?.Shutdown(SocketShutdown.Both);
             }
+            finally
+            {
+                socket?.Close();
+            }
+            socket = null;
+            cancellationTokenSource.Cancel();
         }
 
         protected override async Task ProcessReadAsync()
@@ -92,6 +101,18 @@ namespace EasyProxy.Core.Channel
                         break;
                     }
                     writer.Advance(read);
+                }
+                catch (SocketException socketException)
+                {
+                    if (socketException.ErrorCode == 10054 || socketException.ErrorCode == 995)
+                    {
+                        logger.LogInformation("channel close");
+                    }
+                    else
+                    {
+                        logger.LogError(socketException, "Exception happened in ReceiveAsync");
+                    }
+                    break;
                 }
                 catch (Exception e)
                 {

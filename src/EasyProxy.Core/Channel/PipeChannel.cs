@@ -39,6 +39,7 @@ namespace EasyProxy.Core.Channel
 
                 await Task.WhenAll(readTask, sendTask);
 
+                logger.LogInformation("call on closed");
                 OnClosed();
             }
             catch (Exception e)

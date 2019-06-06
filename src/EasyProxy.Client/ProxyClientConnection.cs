@@ -47,7 +47,6 @@ namespace EasyProxy.Client
             await serverSocket.ConnectAsync(endpoint);
             proxyChannel = new ProxyChannel<ProxyPackage>(serverSocket, encoder, decoder, logger, channelOptions);
             proxyChannel.PackageReceived += OnPackageReceived;
-            proxyChannel.Closed += OnChannelClosed;
             _ = proxyChannel.StartAsync();
             await proxyChannel.SendAsync(new ProxyPackage
             {
@@ -56,30 +55,51 @@ namespace EasyProxy.Client
             });
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
-            throw new NotImplementedException();
+            var channels = serverChannelHolder.Values;
+            foreach (var channel in channels)
+            {
+                channel.Close();
+            }
+            await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// 收到服务端转发的数据，直接发给目标服务器
-        /// </summary>
-        /// <param name="channel"></param>
-        /// <param name="package"></param>
-        /// <returns></returns>
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
-            if (package.Type != PackageType.Transfer)
-                return;
+            switch (package.Type)
+            {
+                case PackageType.Transfer:
+                    await ProcessTransfer(channel, package);
+                    break;
+                case PackageType.Disconnect:
+                    await ProcessDisconect(channel, package);
+                    break;
+            }
+        }
+        private async Task ProcessDisconect(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
+            logger.LogInformation("收到服务端发送的断开连接");
+            await Task.CompletedTask;
+        }
+        private async Task ProcessTransfer(IChannel<ProxyPackage> channel, ProxyPackage package)
+        {
             IChannel targetChannel;
             if (!serverChannelHolder.ContainsKey(package.ConnectionId))
             {
-                var nsocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 var targetEp = new IPEndPoint(IPAddress.Parse(channelConfig.FrontendIp), channelConfig.FrontendPort);
-                await nsocket.ConnectAsync(targetEp);
+                var wrapper = new TimeoutSocketWrapper(targetEp);
+                var nsocket = wrapper.Connect(channelOptions.ConnectTimeout);
+                if (nsocket == null)
+                {
+                    logger.LogInformation("Connect target fail");
+                    await SendDisconnectPackage(channel, package.ConnectionId);
+                    return;
+                }
                 var connectionId = package.ConnectionId;
                 targetChannel = new MarkedProxyChannel(connectionId, nsocket, logger, channelOptions);
                 targetChannel.DataReceived += OnDataReceived;
+                targetChannel.Closed += OnChannelClosedAsync;
                 serverChannelHolder[package.ConnectionId] = targetChannel;
                 _ = targetChannel.StartAsync();
             }
@@ -91,12 +111,6 @@ namespace EasyProxy.Client
             await targetChannel.SendAsync(package.Data);
         }
 
-        /// <summary>
-        /// 转发数据到真正的服务器
-        /// </summary>
-        /// <param name="connectionId"></param>
-        /// <param name="data"></param>
-        /// <returns></returns>
         private async Task TransferAsync(long connectionId, byte[] data)
         {
             var package = new ProxyPackage
@@ -109,8 +123,20 @@ namespace EasyProxy.Client
             await proxyChannel.SendAsync(package);
         }
 
-        private void OnChannelClosed(object sender, EventArgs e)
+        private void OnChannelClosedAsync(object sender, EventArgs e)
         {
+            var channel = sender as MarkedProxyChannel;
+            _ = SendDisconnectPackage(proxyChannel, channel.Mark);
+        }
+
+        private async Task SendDisconnectPackage(IChannel<ProxyPackage> channel, long connectionId)
+        {
+            await channel.SendAsync(new ProxyPackage
+            {
+                Type = PackageType.Disconnect,
+                ChannelId = channelConfig.ChannelId,
+                ConnectionId = connectionId
+            });
         }
 
         private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)

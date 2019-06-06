@@ -6,6 +6,7 @@ using EasyProxy.Core.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace EasyProxy.Client
         private readonly IPackageEncoder<ProxyPackage> encoder;
         private readonly IPackageDecoder<ProxyPackage> decoder;
         private readonly ChannelOptions channelOptions;
+        private readonly Dictionary<int, IConnection> clientConnectionHolder;
         public ProxyClient(IOptions<ClientOptions> options
             , ILogger<ProxyClient> logger
             , IPackageEncoder<ProxyPackage> encoder
@@ -30,6 +32,7 @@ namespace EasyProxy.Client
             this.encoder = encoder;
             this.decoder = decoder;
             channelOptions = new ChannelOptions();
+            clientConnectionHolder = new Dictionary<int, IConnection>();
         }
 
         public async Task StartAsync()
@@ -84,6 +87,7 @@ namespace EasyProxy.Client
             {
                 var connection = new ProxyClientConnection(logger, IPAddress.Parse(options.ServerAddress), options.ServerPort, channel, encoder, decoder);
                 _ = connection.StartAsync();
+                clientConnectionHolder.Add(channel.ChannelId, connection);
                 logger.LogInformation($"Start channel:{channel.ChannelId},targetIp:{channel.FrontendIp},targetPort:{channel.FrontendPort},serverPort:{channel.BackendPort}");
             }
 
@@ -93,11 +97,16 @@ namespace EasyProxy.Client
 
         private void OnAuthChannelClosed(object sender, EventArgs e)
         {
+            logger.LogInformation("Authentication channle closed");
         }
 
         public async Task StopAsync()
         {
-
+            var connections = clientConnectionHolder.Values;
+            foreach (var connection in connections)
+            {
+                await connection.StopAsync();
+            }
         }
     }
 }

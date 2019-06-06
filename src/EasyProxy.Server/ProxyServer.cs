@@ -5,8 +5,6 @@ using EasyProxy.Core.Common;
 using EasyProxy.Core.Config;
 using EasyProxy.Core.Model;
 using EasyProxy.Server.Dashboard;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -26,6 +24,7 @@ namespace EasyProxy.Server
         private readonly ProxyPackageEncoder encoder;
         private readonly ConfigHelper configHelper;
         private readonly IIdGenerator idGenerator;
+        private DashboardServer dashboardServer;
 
         public ProxyServer(IOptions<ServerOptions> options, ILogger<ProxyServer> logger, ProxyPackageDecoder decoder, ProxyPackageEncoder encoder, IIdGenerator idGenerator)
         {
@@ -63,7 +62,6 @@ namespace EasyProxy.Server
                     proxyChannel.PackageReceived += OnPackageReceived;
                     proxyChannel.Closed += OnProxyClosed;
                     _ = proxyChannel.StartAsync();
-                    logger.LogInformation($"client connected");
                 }
             });
         }
@@ -79,9 +77,6 @@ namespace EasyProxy.Server
             {
                 case PackageType.Connect:
                     await ProcessConnect(channel, package);
-                    break;
-                case PackageType.DisConnected:
-                    await ProcessDisConnected(package);
                     break;
                 case PackageType.Authentication:
                     await ProcessAuthentication(channel, package);
@@ -125,26 +120,24 @@ namespace EasyProxy.Server
         private async Task ProcessConnect(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
             var channelConfig = await configHelper.GetChannelAsync(package.ChannelId);
-            //ProxyServerChannelManager.AddChannel(package.ChannelId, channel);
-            logger.LogInformation($"connected:{package.ChannelId},{package.ConnectionId}");
             var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
             await connection.StartAsync();
         }
 
-        private async Task ProcessDisConnected(ProxyPackage package)
+        private Task StartDashboardAsync()
         {
-            //ProxyServerChannelManager.RemoveChannel(package.ChannelId);
-            await Task.CompletedTask;
-        }
-
-        private async Task StartDashboardAsync()
-        {
-            logger.LogInformation($"Start Dashboard Server on :{options.DashboardPort}");
-            await WebHost.CreateDefaultBuilder().UseStartup<Startup>().Build().RunAsync();
+            dashboardServer = new DashboardServer(options.DashboardHost, options.DashboardPort, logger);
+            var task = dashboardServer.StartAsync();
+            return task;
         }
 
         public async Task StopAsync()
         {
+            if (options.EanbleDashboard)
+            {
+                await dashboardServer.StopAsync();
+            }
+            await Task.CompletedTask;
         }
     }
 }
