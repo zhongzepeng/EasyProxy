@@ -4,7 +4,7 @@ using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
 using EasyProxy.Core.Config;
 using EasyProxy.Core.Model;
-using EasyProxy.Server.Dashboard;
+using EasyProxy.HttpServer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -24,7 +24,6 @@ namespace EasyProxy.Server
         private readonly ProxyPackageEncoder encoder;
         private readonly ConfigHelper configHelper;
         private readonly IIdGenerator idGenerator;
-        private DashboardServer dashboardServer;
 
         public ProxyServer(IOptions<ServerOptions> options, ILogger<ProxyServer> logger, ProxyPackageDecoder decoder, ProxyPackageEncoder encoder, IIdGenerator idGenerator)
         {
@@ -43,7 +42,8 @@ namespace EasyProxy.Server
             {
                 _ = StartDashboardAsync();
             }
-            await StartProxyServer();
+            //await StartProxyServer();
+            await Task.CompletedTask;
         }
 
         private async Task StartProxyServer()
@@ -126,16 +126,18 @@ namespace EasyProxy.Server
 
         private Task StartDashboardAsync()
         {
-            dashboardServer = new DashboardServer(options.DashboardHost, options.DashboardPort, logger);
-            var task = dashboardServer.StartAsync();
-            return task;
+            var httpServer = new EasyHttpServer(new HttpServerOptions
+            {
+                Address = "127.0.0.1",
+                Port = 9000
+            }, logger);
+            return httpServer.ListenAsync();
         }
 
         public async Task StopAsync()
         {
             if (options.EanbleDashboard)
             {
-                await dashboardServer.StopAsync();
             }
             await Task.CompletedTask;
         }

@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyProxy.Core\EasyProxy.Core.csproj" />
+    <ProjectReference Include="..\EasyProxy.HttpServer\EasyProxy.HttpServer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +31,12 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System">
+      <HintPath>System</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
