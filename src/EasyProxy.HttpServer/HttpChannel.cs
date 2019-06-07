@@ -59,7 +59,7 @@ namespace EasyProxy.HttpServer
                 }
 
                 await httpRequest.WriteBodyAsync(buffer.Slice(0, contentLength).ToArray());
-                return buffer.GetPosition(contentLength);
+                consumed = buffer.GetPosition(contentLength);
             }
             _ = OnHttpRequestedAsync(httpRequest);
             return consumed;
@@ -86,28 +86,17 @@ namespace EasyProxy.HttpServer
 
         private string ReadLine(ReadOnlySequence<byte> buffer, out SequencePosition consumed)
         {
-            try
+            consumed = buffer.Start;
+            var rindex = buffer.PositionOf((byte)'\r');
+            var nindex = buffer.PositionOf((byte)'\n');
+            if (rindex.HasValue && nindex.HasValue)
             {
-                consumed = buffer.Start;
-                var rindex = buffer.PositionOf((byte)'\r');
-                var nindex = buffer.PositionOf((byte)'\n');
-                if (rindex.HasValue && nindex.HasValue)
-                {
-                    var lineSequence = buffer.Slice(consumed, nindex.Value);
-                    var linebytes = lineSequence.Slice(0, lineSequence.Length - 1).ToArray();
-                    consumed = buffer.GetPosition(linebytes.Length + 2);
-                    return defaultEncoding.GetString(linebytes);
-                }
-                return null;
-
+                var lineSequence = buffer.Slice(consumed, nindex.Value);
+                var linebytes = lineSequence.Slice(0, lineSequence.Length - 1).ToArray();
+                consumed = buffer.GetPosition(linebytes.Length + 2);
+                return defaultEncoding.GetString(linebytes);
             }
-            catch (Exception ee)
-            {
-
-                throw ee;
-            }
-
+            return null;
         }
-
     }
 }
