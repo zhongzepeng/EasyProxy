@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Text;
 
@@ -7,12 +8,23 @@ namespace EasyProxy.HttpServer
     public static class HttpResponseHelper
     {
         private static Stream errorPageStream;
+        private static Stream deafultPageStream;
         static HttpResponseHelper()
         {
+            deafultPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.default.html");
             errorPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.error.html");
         }
 
-        public static HttpResponse CreateDefaultErrorResponse()
+        public static HttpResponse CreateDefaultPageResponse()
+        {
+            var res = new HttpResponse();
+            deafultPageStream.Seek(0, SeekOrigin.Begin);
+            deafultPageStream.CopyTo(res.Body);
+            res.Body.Seek(0, SeekOrigin.Begin);
+            return res;
+        }
+
+        public static HttpResponse CreateDefaultErrorResponse(Exception e)
         {
             var res = new HttpResponse
             {
@@ -23,6 +35,19 @@ namespace EasyProxy.HttpServer
             res.Body.Seek(0, SeekOrigin.Begin);
             return res;
         }
+
+        public static HttpResponse CreateNotFoundResponse()
+        {
+            var res = new HttpResponse
+            {
+                StatusCode = 404
+            };
+            errorPageStream.Seek(0, SeekOrigin.Begin);
+            errorPageStream.CopyTo(res.Body);
+            res.Body.Seek(0, SeekOrigin.Begin);
+            return res;
+        }
+
 
         public static byte[] ToHttpProtocolData(this HttpResponse httpResponse)
         {

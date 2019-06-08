@@ -1,5 +1,6 @@
 ﻿using EasyProxy.Core.Channel;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -11,27 +12,23 @@ namespace EasyProxy.HttpServer
     {
         const int Backlog = 100;
         private readonly Socket serverSocket;
-        private readonly ILogger logger;
+        private readonly ILogger<EasyHttpServer> logger;
         private HttpServerOptions options;
         private IHttpHandler httpHandler;
-        public event Func<HttpRequest, Exception, Task> RequestError;
-        public EasyHttpServer(HttpServerOptions options, ILogger logger, IHttpHandler httpHandler = null)
+        public event Func<HttpRequest, Exception, Task<HttpResponse>> RequestError;
+        public EasyHttpServer(IOptions<HttpServerOptions> options, ILogger<EasyHttpServer> logger, IHttpHandler httpHandler)
         {
             this.httpHandler = httpHandler;
-            if (this.httpHandler == null)
-            {
-                this.httpHandler = new DefaultHttpHandler();
-            }
-            this.options = options;
+            this.options = options.Value;
             this.logger = logger;
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            var endpoint = new IPEndPoint(IPAddress.Parse(options.Address), options.Port);
+            var endpoint = new IPEndPoint(IPAddress.Parse(this.options.Address), this.options.Port);
             serverSocket.Bind(endpoint);
         }
 
-        protected void OnRequestError(HttpRequest request, Exception exception)
+        protected Task<HttpResponse> OnRequestError(HttpRequest request, Exception exception)
         {
-            RequestError?.Invoke(request, exception);
+            return RequestError?.Invoke(request, exception);
         }
 
         public async Task ListenAsync()
@@ -43,6 +40,8 @@ namespace EasyProxy.HttpServer
                 while (true)
                 {
                     var httpSocket = await serverSocket.AcceptAsync();
+                    //httpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    logger.LogInformation($"accept new {httpSocket.RemoteEndPoint}");
                     var httpChannel = new HttpChannel(httpSocket, logger, new ChannelOptions());
                     httpChannel.HttpRequested += OnHttpRequested;
                     _ = httpChannel.StartAsync();
@@ -50,9 +49,9 @@ namespace EasyProxy.HttpServer
             });
         }
 
-
         private async Task OnHttpRequested(HttpChannel channel, HttpRequest request)
         {
+            logger.LogInformation($"httprequest:{request}");
             HttpResponse httpResponse;
             try
             {
@@ -60,8 +59,11 @@ namespace EasyProxy.HttpServer
             }
             catch (Exception e)
             {
-                httpResponse = HttpResponseHelper.CreateDefaultErrorResponse();
-                OnRequestError(request, e);
+                httpResponse = await OnRequestError(request, e);
+            }
+            if (request.Headers.ContainsKey("Connection"))
+            {
+                httpResponse.Headers.Add("Connection", request.Headers["Connection"]);
             }
             var res = httpResponse.ToHttpProtocolData();
             await channel.SendAsync(res);

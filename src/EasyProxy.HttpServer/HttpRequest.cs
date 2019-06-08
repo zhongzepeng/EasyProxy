@@ -16,7 +16,51 @@ namespace EasyProxy.HttpServer
 
         public IDictionary<string, string> Headers { get; set; }
 
+        private IDictionary<string, string> queryDic;
+        public IDictionary<string, string> Query
+        {
+            get
+            {
+                if (queryDic != null)
+                    return queryDic;
+                queryDic = GetQueryDictionary();
+                return queryDic;
+            }
+        }
+
         public Stream Body { get; set; }
+
+        public string Host
+        {
+            get
+            {
+                return Headers.ContainsKey("Host") ? Headers["Host"] : string.Empty;
+            }
+        }
+
+        public Uri Uri
+        {
+            get
+            {
+                return new Uri($"{Host}/{Url}");
+            }
+        }
+
+        public string QueryString
+        {
+            get
+            {
+                return Uri.Query;
+            }
+        }
+
+        public string AbsolutePath
+        {
+            get
+            {
+                return Uri.AbsolutePath;
+            }
+        }
 
         internal void ParseStatusLine(string line)
         {
@@ -59,6 +103,29 @@ namespace EasyProxy.HttpServer
             var value = line.Substring(index + 1).TrimStart();
 
             return new KeyValuePair<string, string>(key, value);
+        }
+
+        private IDictionary<string, string> GetQueryDictionary()
+        {
+            var dic = new Dictionary<string, string>();
+            var query = QueryString;
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return dic;
+            }
+            if (query.StartsWith("?"))
+            {
+                query = query.Substring(1);
+            }
+            var ps = query.Split('&');
+            foreach (var p in ps)
+            {
+                var parts = p.Split('=');
+                if (dic.ContainsKey(parts[0]))
+                    continue;
+                dic.Add(parts[0].ToLower(), parts[1]);
+            }
+            return dic;
         }
 
         public override string ToString()

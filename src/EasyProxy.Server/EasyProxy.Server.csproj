@@ -9,6 +9,8 @@
   <ItemGroup>
     <None Remove="appsettings.json" />
     <None Remove="easyproxy.db" />
+    <None Remove="Views\index.html" />
+    <None Remove="Views\login.html" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,6 +20,11 @@
     <Content Include="easyproxy.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Views\Dashboard\index.html" />
+    <EmbeddedResource Include="Views\Dashboard\login.html" />
   </ItemGroup>
 
   <ItemGroup>

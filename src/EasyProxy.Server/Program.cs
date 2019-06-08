@@ -1,5 +1,7 @@
-﻿using EasyProxy.Core.Codec;
+﻿using EasyProxy.Core;
+using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
+using EasyProxy.HttpServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,9 +23,11 @@ namespace EasyProxy.Server
             serviceCollection.AddSingleton(configuration);
             serviceCollection.AddLogging(configure => configure.AddConsole());
             serviceCollection.Configure<ServerOptions>(configuration.GetSection("ServerOptions"));
-
+            serviceCollection.AddHttpServer(configuration.GetSection("DashboardServer"));
             var serviceProvider = serviceCollection.BuildServiceProvider();
             var proxyServer = serviceProvider.GetService<ProxyServer>();
+
+            ServiceLocator.Init(serviceProvider);
 
             var task = proxyServer.StartAsync();
 

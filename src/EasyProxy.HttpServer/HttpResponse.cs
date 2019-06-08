@@ -19,5 +19,11 @@ namespace EasyProxy.HttpServer
         public Stream Body { get; set; }
 
         public string ContentType { get; set; } = "text/html; charset=utf-8";
+
+        public void WriteBody(byte[] content)
+        {
+            Body.Write(content);
+            Body.Seek(0, SeekOrigin.Begin);
+        }
     }
 }

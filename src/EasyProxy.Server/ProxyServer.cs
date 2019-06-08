@@ -24,8 +24,14 @@ namespace EasyProxy.Server
         private readonly ProxyPackageEncoder encoder;
         private readonly ConfigHelper configHelper;
         private readonly IIdGenerator idGenerator;
+        private readonly EasyHttpServer httpServer;
 
-        public ProxyServer(IOptions<ServerOptions> options, ILogger<ProxyServer> logger, ProxyPackageDecoder decoder, ProxyPackageEncoder encoder, IIdGenerator idGenerator)
+        public ProxyServer(IOptions<ServerOptions> options
+            , ILogger<ProxyServer> logger
+            , ProxyPackageDecoder decoder
+            , ProxyPackageEncoder encoder
+            , IIdGenerator idGenerator
+            , EasyHttpServer httpServer)
         {
             this.logger = logger;
             this.options = options?.Value;
@@ -34,6 +40,7 @@ namespace EasyProxy.Server
             this.encoder = encoder;
             configHelper = new ConfigHelper();
             this.idGenerator = idGenerator;
+            this.httpServer = httpServer;
         }
 
         public async Task StartAsync()
@@ -126,11 +133,17 @@ namespace EasyProxy.Server
 
         private Task StartDashboardAsync()
         {
-            var httpServer = new EasyHttpServer(new HttpServerOptions
+            //var httpServer = new EasyHttpServer(new HttpServerOptions
+            //{
+            //    Address = options.DashboardHost,
+            //    Port = options.DashboardPort
+            //}, logger);
+            httpServer.RequestError += async (e, req) =>
             {
-                Address = "127.0.0.1",
-                Port = 9000
-            }, logger);
+                logger.LogError("", e);
+                await Task.CompletedTask;
+                return HttpResponseHelper.CreateDefaultErrorResponse(req);
+            };
             return httpServer.ListenAsync();
         }
 
