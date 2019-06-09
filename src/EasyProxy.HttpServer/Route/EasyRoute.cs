@@ -69,11 +69,19 @@ namespace EasyProxy.HttpServer.Route
                     {
                         (controllerType, methodInfo) = httpGetRoutes[path];
                     }
+                    else
+                    {
+                        return (null, null, null);
+                    }
                     break;
                 case HttpMethod.Post:
                     if (httpPostRoutes.ContainsKey(path))
                     {
                         (controllerType, methodInfo) = httpPostRoutes[path];
+                    }
+                    else
+                    {
+                        return (null, null, null);
                     }
                     break;
                 default://Unsupport httpmethod
@@ -85,13 +93,13 @@ namespace EasyProxy.HttpServer.Route
             var parameterType = methodInfo.GetParameters().SingleOrDefault()?.ParameterType;
             if (parameterType != null)
             {
-                parameter = GetHttpGetParameter(parameterType, request);
+                parameter = ResolveParameter(parameterType, request);
             }
 
             return (controllerObj, methodInfo, parameter);
         }
 
-        private object GetHttpGetParameter(Type type, HttpRequest request)
+        private object ResolveParameter(Type type, HttpRequest request)
         {
             if (request.HttpMethod == HttpMethod.Get)
             {

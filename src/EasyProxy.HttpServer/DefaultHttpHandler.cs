@@ -29,6 +29,9 @@ namespace EasyProxy.HttpServer
                     return HttpResponseHelper.CreateNotFoundResponse();
                 }
 
+                context.Controller = controller;
+                context.Action = methodInfo;
+
                 await controller.OnActionExecutedAsync(context);
 
                 if (context.HttpResponse != null)

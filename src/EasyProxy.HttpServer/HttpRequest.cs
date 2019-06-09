@@ -81,6 +81,7 @@ namespace EasyProxy.HttpServer
         {
             Body = new MemoryStream();
             await Body.WriteAsync(bytes);
+            Body.Seek(0, SeekOrigin.Begin);
         }
 
         internal void ParseHeader(List<string> lines)

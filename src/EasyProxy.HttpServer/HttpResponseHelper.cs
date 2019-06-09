@@ -9,8 +9,10 @@ namespace EasyProxy.HttpServer
     {
         private static Stream errorPageStream;
         private static Stream deafultPageStream;
+        private static Stream notfoundPageStream;
         static HttpResponseHelper()
         {
+            notfoundPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.notfound.html");
             deafultPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.default.html");
             errorPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.error.html");
         }
@@ -42,9 +44,7 @@ namespace EasyProxy.HttpServer
             {
                 StatusCode = 404
             };
-            errorPageStream.Seek(0, SeekOrigin.Begin);
-            errorPageStream.CopyTo(res.Body);
-            res.Body.Seek(0, SeekOrigin.Begin);
+            res.WriteBody(notfoundPageStream);
             return res;
         }
 

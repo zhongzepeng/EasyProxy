@@ -1,6 +1,7 @@
 ﻿using EasyProxy.Core;
 using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
+using EasyProxy.Core.Config;
 using EasyProxy.HttpServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ namespace EasyProxy.Server
             serviceCollection.AddSingleton(typeof(IIdGenerator), typeof(IdGenerator));
             serviceCollection.AddSingleton<ProxyPackageDecoder>();
             serviceCollection.AddSingleton<ProxyPackageEncoder>();
+            serviceCollection.AddSingleton<ConfigHelper>();
             var configuration = BuildConfiguration();
             serviceCollection.AddSingleton(configuration);
             serviceCollection.AddLogging(configure => configure.AddConsole());

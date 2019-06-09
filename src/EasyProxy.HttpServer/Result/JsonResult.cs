@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace EasyProxy.HttpServer.Result
 {
@@ -15,9 +16,15 @@ namespace EasyProxy.HttpServer.Result
             {
                 ContentType = "application/json"
             };
-            result.Body.Write(Constants.DefaultEncoding.GetBytes(JsonConvert.SerializeObject(Data)));
+            result.Body.Write(Constants.DefaultEncoding.GetBytes(JsonConvert.SerializeObject(Data, serializerSettings)));
             result.Body.Seek(0, System.IO.SeekOrigin.Begin);
             return result;
         }
+
+        private readonly JsonSerializerSettings serializerSettings = new JsonSerializerSettings
+        {
+            ContractResolver = new CamelCasePropertyNamesContractResolver(),
+            Formatting = Formatting.Indented
+        };
     }
 }

@@ -6,11 +6,12 @@
     <meta charset="utf-8" />
     <title>EasyProxy-Login</title>
     <style>
-        .my-login-page{
-            padding:100px;
+        .my-login-page {
+            padding: 100px;
         }
-        input{
-            width:300px !important;
+
+        input {
+            width: 300px !important;
         }
     </style>
 </head>
@@ -34,7 +35,7 @@
                                     <input id="password" type="password" class="form-control" name="password" required data-eye>
                                 </div>
                                 <div class="form-group m-0">
-                                    <button type="button" class="btn btn-primary btn-block">
+                                    <button id="login-btn" type="button" class="btn btn-primary btn-block">
                                         Login
                                     </button>
                                 </div>
@@ -45,5 +46,27 @@
             </div>
         </div>
     </section>
+    <script type="text/javascript">
+        window.onload = () => {
+            document.getElementById('login-btn').addEventListener('click', () => {
+                var username = document.getElementById('username').value;
+                var password = document.getElementById('password').value;
+                if (!password || !username) {
+                    alert('username，password is required');
+                    return;
+                }
+                fetch("/api/login", {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                }).then(res => res.json())
+                    .then(data => {
+
+                    });
+            });
+        };
+    </script>
 </body>
 </html>

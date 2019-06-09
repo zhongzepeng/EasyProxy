@@ -8,10 +8,12 @@
   <ItemGroup>
     <None Remove="DefaultPages\default.html" />
     <None Remove="DefaultPages\error.html" />
+    <None Remove="DefaultPages\notfound.html" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="DefaultPages\default.html" />
+    <EmbeddedResource Include="DefaultPages\notfound.html" />
     <EmbeddedResource Include="DefaultPages\error.html" />
   </ItemGroup>
 

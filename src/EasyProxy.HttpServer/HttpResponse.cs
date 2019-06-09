@@ -25,5 +25,12 @@ namespace EasyProxy.HttpServer
             Body.Write(content);
             Body.Seek(0, SeekOrigin.Begin);
         }
+
+        public void WriteBody(Stream stream)
+        {
+            stream.Seek(0, SeekOrigin.Begin);
+            stream.CopyTo(Body);
+            Body.Seek(0, SeekOrigin.Begin);
+        }
     }
 }
