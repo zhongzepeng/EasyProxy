@@ -38,7 +38,7 @@ namespace EasyProxy.Server.Controllers
             var token = JwtHelper.GenerateJwtToken(options.Secret, new Dictionary<string, string>
             {
                 { "username",input.UserName},
-                { "logintime",DateTime.Now.ToShortDateString()}
+                { "logintime",DateTime.Now.ToString()}
             });
             return Json(new ResultDto<string>(token) { Success = true });
         }

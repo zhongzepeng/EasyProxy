@@ -14,6 +14,7 @@
             width: 300px !important;
         }
     </style>
+    <script src="/site.js"></script>
 </head>
 <body class="my-login-page">
     <section class="h-100">
@@ -55,16 +56,16 @@
                     alert('username，password is required');
                     return;
                 }
-                fetch("/api/login", {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        username: username,
-                        password: password
-                    })
-                }).then(res => res.json())
-                    .then(data => {
-
-                    });
+                HttpRequestHelper.post('/api/login', {
+                    username: username,
+                    password: password
+                }).then(data => {
+                    if (data.success) {
+                        Common.setStorage(HttpRequestHelper.TOKEN_KEY, data.data);
+                        //TODO:redirect to index
+                        console.log(data);
+                    }
+                });
             });
         };
     </script>

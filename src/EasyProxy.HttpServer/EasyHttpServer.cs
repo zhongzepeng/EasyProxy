@@ -59,6 +59,7 @@ namespace EasyProxy.HttpServer
             }
             catch (Exception e)
             {
+                logger.LogError("Exception throw ProccessAsync", e);
                 httpResponse = await OnRequestError(request, e);
             }
             if (request.Headers.ContainsKey("Connection"))

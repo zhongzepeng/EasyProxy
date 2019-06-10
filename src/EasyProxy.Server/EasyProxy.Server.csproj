@@ -4,11 +4,14 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <LangVersion>7.2</LangVersion>
+    <ApplicationIcon />
+    <Win32Resource />
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="appsettings.json" />
     <None Remove="easyproxy.db" />
+    <None Remove="Resource\site.js" />
     <None Remove="Views\index.html" />
     <None Remove="Views\login.html" />
   </ItemGroup>
@@ -19,6 +22,9 @@
     </Content>
     <Content Include="easyproxy.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resource\*.*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
@@ -45,5 +51,4 @@
       <HintPath>System</HintPath>
     </Reference>
   </ItemGroup>
-
 </Project>
