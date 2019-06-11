@@ -1,4 +1,5 @@
 ﻿using EasyProxy.HttpServer.Controller;
+using EasyProxy.HttpServer.Filter;
 using EasyProxy.HttpServer.Route;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ namespace EasyProxy.HttpServer
             services.AddSingleton(typeof(IHttpHandler), typeof(DefaultHttpHandler));
             services.AddSingleton(typeof(EasyHttpServer), typeof(EasyHttpServer));
             RegisterControllerTypes(services);
+            //RegisterFilterTypes(services);
         }
 
         internal static T GetService<T>(this IServiceProvider provider) where T : class
@@ -34,6 +36,19 @@ namespace EasyProxy.HttpServer
             foreach (var controller in controllers)
             {
                 services.AddTransient(controller);
+            }
+        }
+
+        private static void RegisterFilterTypes(IServiceCollection services)
+        {
+            var filters = Assembly
+                .GetEntryAssembly()
+                .GetTypes()
+                .Where(type => !type.IsAbstract && typeof(IFilter).IsAssignableFrom(type));
+
+            foreach (var filter in filters)
+            {
+                services.AddTransient(filter);
             }
         }
     }

@@ -11,5 +11,7 @@ namespace EasyProxy.HttpServer.Controller
         public IController Controller { get; internal set; }
 
         public MethodInfo Action { get; internal set; }
+
+        public bool Final { get; set; }
     }
 }

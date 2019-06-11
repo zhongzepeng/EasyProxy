@@ -1,6 +1,10 @@
 ﻿using EasyProxy.HttpServer.Controller;
+using EasyProxy.HttpServer.Filter;
 using EasyProxy.HttpServer.Result;
 using EasyProxy.HttpServer.Route;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace EasyProxy.HttpServer.Middleware
@@ -31,12 +35,26 @@ namespace EasyProxy.HttpServer.Middleware
                 context.Controller = controller;
                 context.Action = methodInfo;
 
-                await controller.OnActionExecutedAsync(context);
+                var filterList = GetFilters(controller, methodInfo);
+                var stack = new Stack<IFilter>();
+                for (var i = 0; i < filterList.Count; i++)
+                {
+                    var filter = filterList[i];
+                    await filter.OnActionExecutingAsync(context);
+                    if (context.Final)
+                    {
+                        return context.HttpResponse;
+                    }
+                    stack.Push(filter);
+                }
 
-                if (context.HttpResponse != null)
+                await controller.OnActionExecutingAsync(context);
+
+                if (context.Final)
                 {
                     return context.HttpResponse;
                 }
+
                 IActionResult actionResult;
                 if (parameter == null)
                 {
@@ -47,12 +65,52 @@ namespace EasyProxy.HttpServer.Middleware
                     actionResult = methodInfo.Invoke(controller, new object[] { parameter }) as IActionResult;
                 }
 
-                return actionResult.ExecuteResult();
+                context.HttpResponse = actionResult.ExecuteResult();
+
+                await controller.OnActionExecutedAsync(context);
+
+                if (context.Final)
+                {
+                    return context.HttpResponse;
+                }
+
+                while (stack.Count != 0)
+                {
+                    var filter = stack.Pop();
+                    await filter.OnActionExecutedAsync(context);
+
+                    if (context.Final)
+                    {
+                        return context.HttpResponse;
+                    }
+                }
+                return context.HttpResponse;
             }
             catch (System.Exception e)
             {
                 return HttpResponseHelper.CreateDefaultErrorResponse(e);
             }
+        }
+
+        private List<IFilter> GetFilters(IController controller, MethodInfo action)
+        {
+            var filters = action.GetCustomAttributes()
+                 .Where(x => typeof(IFilter).IsAssignableFrom(x.GetType()) && !x.GetType().IsAbstract)
+                 .Select(x => x as IFilter).ToList();
+            var controlerFilters = controller.GetType().GetCustomAttributes()
+                .Where(x => typeof(IFilter).IsAssignableFrom(x.GetType()) && !x.GetType().IsAbstract)
+                 .Select(x => x as IFilter).ToList();
+            filters = filters.Union(controlerFilters).ToList();
+            filters.Sort(new FilterComparer());
+            return filters;
+        }
+    }
+
+    internal class FilterComparer : IComparer<IFilter>
+    {
+        public int Compare(IFilter x, IFilter y)
+        {
+            return x.Order.CompareTo(y.Order);
         }
     }
 }

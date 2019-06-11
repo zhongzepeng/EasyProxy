@@ -10,5 +10,16 @@ namespace EasyProxy.Core
         {
             Instance = provider;
         }
+
+        public static T GetService<T>() where T : class
+        {
+            if (Instance == null)
+            {
+                return default;
+            }
+
+            return Instance.GetService(typeof(T)) as T;
+        }
     }
+
 }

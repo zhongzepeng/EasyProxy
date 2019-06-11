@@ -5,10 +5,7 @@ namespace EasyProxy.HttpServer.Controller
 {
     public abstract class ControllerBase : IController
     {
-        public async virtual Task ExecuteAsync(ActionExecuteContext context)
-        {
-            await Task.CompletedTask;
-        }
+        public dynamic TempData => new { };
 
         public async virtual Task OnActionExecutedAsync(ActionExecuteContext context)
         {

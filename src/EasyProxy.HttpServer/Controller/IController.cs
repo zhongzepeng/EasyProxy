@@ -4,8 +4,8 @@ namespace EasyProxy.HttpServer.Controller
 {
     public interface IController
     {
+        dynamic TempData { get; }
         Task OnActionExecutingAsync(ActionExecuteContext context);
-        Task ExecuteAsync(ActionExecuteContext context);
         Task OnActionExecutedAsync(ActionExecuteContext context);
     }
 }

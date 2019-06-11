@@ -48,30 +48,30 @@ namespace EasyProxy.Server.Controllers
             return input.UserName == options.UserName && input.Password == options.Password;
         }
 
-        public override async Task OnActionExecutingAsync(ActionExecuteContext context)
-        {
-            if (context.Action.IsDefined(typeof(AllowAnonymouseAttribute), false))
-            {
-                await Task.CompletedTask;
-                return;
-            }
-            var failResut = new HttpStatusCodeResult { StatusCode = 403 };
-            if (!context.HttpRequest.Headers.ContainsKey("Authorization"))
-            {
-                context.HttpResponse = failResut.ExecuteResult();
-                return;
-            }
-            var token = context.HttpRequest.Headers["Authorization"];
+        //public override async Task OnActionExecutingAsync(ActionExecuteContext context)
+        //{
+        //    if (context.Action.IsDefined(typeof(AllowAnonymouseAttribute), false))
+        //    {
+        //        await Task.CompletedTask;
+        //        return;
+        //    }
+        //    var failResut = new HttpStatusCodeResult { StatusCode = 403 };
+        //    if (!context.HttpRequest.Headers.ContainsKey("Authorization"))
+        //    {
+        //        context.HttpResponse = failResut.ExecuteResult();
+        //        return;
+        //    }
+        //    var token = context.HttpRequest.Headers["Authorization"];
 
-            var (success, dic) = JwtHelper.ValidateToken(token, options.Secret);
+        //    var (success, dic) = JwtHelper.ValidateToken(token, options.Secret);
 
-            if (!success)
-            {
-                context.HttpResponse = failResut.ExecuteResult();
-                return;
-            }
+        //    if (!success)
+        //    {
+        //        context.HttpResponse = failResut.ExecuteResult();
+        //        return;
+        //    }
 
-            UserName = dic["username"];
-        }
+        //    UserName = dic["username"];
+        //}
     }
 }
