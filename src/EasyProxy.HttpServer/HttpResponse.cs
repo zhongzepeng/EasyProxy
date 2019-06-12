@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using EasyProxy.HttpServer.Cookie;
+using System.Collections.Generic;
 using System.IO;
 
 namespace EasyProxy.HttpServer
@@ -9,6 +10,7 @@ namespace EasyProxy.HttpServer
         {
             Body = new MemoryStream();
             Headers = new Dictionary<string, string>();
+            Cookies = new List<HttpCookie>();
         }
         public int StatusCode { get; set; } = 200;
 
@@ -17,6 +19,8 @@ namespace EasyProxy.HttpServer
         public IDictionary<string, string> Headers { get; set; }
 
         public Stream Body { get; set; }
+
+        public List<HttpCookie> Cookies { get; set; }
 
         public string ContentType { get; set; } = "text/html; charset=utf-8";
 

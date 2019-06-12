@@ -5,15 +5,17 @@ using EasyProxy.HttpServer.Controller;
 using EasyProxy.HttpServer.Result;
 using EasyProxy.HttpServer.Route;
 using EasyProxy.Server.Dtos;
+using EasyProxy.Server.Filters;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace EasyProxy.Server.Controllers
 {
     [Prefix("/api")]
+    [ApiController]
+    [AuthenticationFilter]
     public class ApiController : ControllerBase
     {
         private readonly ILogger<ApiController> logger;
@@ -46,6 +48,12 @@ namespace EasyProxy.Server.Controllers
         private bool CheckPwd(LoginInputDto input)
         {
             return input.UserName == options.UserName && input.Password == options.Password;
+        }
+
+        [HttpGet("/get")]
+        public IActionResult GetData()
+        {
+            return Json(new ResultDto<string>("hello"));
         }
 
         //public override async Task OnActionExecutingAsync(ActionExecuteContext context)

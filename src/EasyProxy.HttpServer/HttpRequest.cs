@@ -16,6 +16,19 @@ namespace EasyProxy.HttpServer
 
         public IDictionary<string, string> Headers { get; set; }
 
+        private IDictionary<string, string> cookies;
+        public IDictionary<string, string> Cookies
+        {
+            get
+            {
+                if (cookies == null)
+                {
+                    cookies = ParseCookies(Headers["Cookie"] ?? string.Empty);
+                }
+                return cookies;
+            }
+        }
+
         private IDictionary<string, string> queryDic;
         public IDictionary<string, string> Query
         {
@@ -146,6 +159,21 @@ namespace EasyProxy.HttpServer
                 sb.AppendLine($"    Body:{Body.Length}");
             }
             return sb.ToString();
+        }
+
+        private IDictionary<string, string> ParseCookies(string cookieString)
+        {
+            var dic = new Dictionary<string, string>();
+            var cookieParts = cookieString.Split(';');
+            foreach (var part in cookieParts)
+            {
+                var kv = part.Split('=');
+                if (!dic.ContainsKey(kv[0]))
+                {
+                    dic.Add(kv[0], kv[1]);
+                }
+            }
+            return dic;
         }
     }
 }

@@ -1,13 +1,12 @@
-﻿using EasyProxy.HttpServer.Controller;
+﻿using EasyProxy.HttpServer.Attributes;
+using EasyProxy.HttpServer.Controller;
 using EasyProxy.HttpServer.Result;
 using EasyProxy.HttpServer.Route;
-using EasyProxy.Server.Filters;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Server.Controllers
 {
-    [Test2(Order = 1)]
     [Prefix("/dashboard")]
     public class DashboardController : ControllerBase
     {
@@ -20,20 +19,20 @@ namespace EasyProxy.Server.Controllers
         [HttpGet("/index")]
         public IActionResult Index()
         {
-            return View("index");
+            return View("index", new { name = "zzp" });
         }
 
         [HttpGet("/login")]
+        [AllowAnonymouse]
         public IActionResult Login()
         {
             return View("login");
         }
 
-        [Test1(Order = 0)]
-        [HttpGet("/test")]
-        public IActionResult Test()
+        [HttpGet("/list")]
+        public IActionResult List()
         {
-            return Json(new { a = 1 });
+            return View("list");
         }
 
         public override Task OnActionExecutedAsync(ActionExecuteContext context)

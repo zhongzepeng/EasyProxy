@@ -27,23 +27,35 @@ namespace EasyProxy.Server.Filters
                 await Task.CompletedTask;
                 return;
             }
-            var failResut = new HttpStatusCodeResult { StatusCode = 403 };
-            if (!context.HttpRequest.Headers.ContainsKey("Authorization"))
+            var failResut = GetFailResult(context.IsApiController);
+            var token = GetToken(context);
+            if (string.IsNullOrEmpty(token))
             {
                 context.HttpResponse = failResut.ExecuteResult();
+                context.Final = true;
                 return;
             }
-            var token = context.HttpRequest.Headers["Authorization"];
-
             var (success, dic) = JwtHelper.ValidateToken(token, options.Secret);
 
             if (!success)
             {
                 context.HttpResponse = failResut.ExecuteResult();
+                context.Final = true;
                 return;
             }
 
             context.Controller.TempData.UserName = dic["username"];
+        }
+
+        private IActionResult GetFailResult(bool isApiController)
+        {
+            return new HttpStatusCodeResult { StatusCode = 403 };
+        }
+
+        private string GetToken(ActionExecuteContext context)
+        {
+            context.HttpRequest.Headers.TryGetValue("authorization", out string token);
+            return token;
         }
     }
 }

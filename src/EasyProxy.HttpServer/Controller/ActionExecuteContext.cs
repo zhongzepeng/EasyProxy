@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using EasyProxy.HttpServer.Attributes;
+using System.Reflection;
 
 namespace EasyProxy.HttpServer.Controller
 {
@@ -13,5 +14,13 @@ namespace EasyProxy.HttpServer.Controller
         public MethodInfo Action { get; internal set; }
 
         public bool Final { get; set; }
+
+        public bool IsApiController
+        {
+            get
+            {
+                return Controller.GetType().IsDefined(typeof(ApiControllerAttribute));
+            }
+        }
     }
 }

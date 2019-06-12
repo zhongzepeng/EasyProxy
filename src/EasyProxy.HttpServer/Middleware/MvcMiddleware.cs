@@ -34,6 +34,7 @@ namespace EasyProxy.HttpServer.Middleware
 
                 context.Controller = controller;
                 context.Action = methodInfo;
+                ((ControllerBase)controller).Request = httpRequest;
 
                 var filterList = GetFilters(controller, methodInfo);
                 var stack = new Stack<IFilter>();
@@ -66,6 +67,8 @@ namespace EasyProxy.HttpServer.Middleware
                 }
 
                 context.HttpResponse = actionResult.ExecuteResult();
+
+                context.HttpResponse.Cookies.AddRange(controller.ResponseCookie);
 
                 await controller.OnActionExecutedAsync(context);
 

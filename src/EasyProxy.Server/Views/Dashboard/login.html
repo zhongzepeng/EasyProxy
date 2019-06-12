@@ -62,8 +62,9 @@
                 }).then(data => {
                     if (data.success) {
                         Common.setStorage(HttpRequestHelper.TOKEN_KEY, data.data);
-                        window.
-                        console.log(data);
+                        window.location.href = '/dashboard/index';
+                    } else {
+                        alert(data.message);
                     }
                 });
             });

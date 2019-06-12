@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -51,6 +52,7 @@ namespace EasyProxy.HttpServer
 
         public static byte[] ToHttpProtocolData(this HttpResponse httpResponse)
         {
+            SetCookies(httpResponse);
             httpResponse.Headers.Add("Content-Type", httpResponse.ContentType);
             httpResponse.Headers.Add("Content-Length", httpResponse.Body.Length.ToString());
             var sb = new StringBuilder();
@@ -68,6 +70,18 @@ namespace EasyProxy.HttpServer
             stream.Write(Constants.DefaultEncoding.GetBytes(protocolData));
             httpResponse.Body.CopyTo(stream);
             return stream.GetBuffer();
+        }
+
+        private static void SetCookies(HttpResponse httpResponse)
+        {
+            if (!httpResponse.Cookies.Any())
+            {
+                return;
+            }
+            foreach (var cookie in httpResponse.Cookies)
+            {
+                httpResponse.Headers.Add("Set-Cookie", cookie.GetHeaderString());
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ namespace EasyProxy.HttpServer
         public static IDictionary<int, string> ReasonPhrase = new Dictionary<int, string>
         {
             { 200,"OK"},
+            { 302,"Temporarily Moved"},
             { 400,"Bad Request"},
             { 401,"Unauthorized"},
             { 403,"Forbidden"},

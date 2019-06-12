@@ -11,7 +11,11 @@
   <ItemGroup>
     <None Remove="appsettings.json" />
     <None Remove="easyproxy.db" />
+    <None Remove="Resource\fontawesome-all.min.css" />
+    <None Remove="Resource\logo.png" />
+    <None Remove="Resource\simple-line-icons.css" />
     <None Remove="Resource\site.js" />
+    <None Remove="Resource\styles.css" />
     <None Remove="Views\index.html" />
     <None Remove="Views\login.html" />
   </ItemGroup>
@@ -26,11 +30,12 @@
     <Content Include="Resource\*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Views\Dashboard\index.html" />
-    <EmbeddedResource Include="Views\Dashboard\login.html" />
+    <Content Include="Views\**\*.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Views\*.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

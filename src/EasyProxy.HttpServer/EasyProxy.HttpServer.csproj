@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="DotLiquid" Version="2.0.314" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="2.2.0" />
   </ItemGroup>
 
