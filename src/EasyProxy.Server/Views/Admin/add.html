@@ -1,0 +1,40 @@
+﻿{% extends Views/Admin/layout.html %}
+{% block content %}
+<div class="row col-md-10">
+    <div>
+        <div class="form-group">
+            <label for="Name">Name</label>
+            <input type="text" class="form-control" id="Name" placeholder="Client Name">
+        </div>
+        <div class="form-group">
+            <label for="SecretKey">SecretKey</label>
+            <input type="text" class="form-control" id="SecretKey" placeholder="SecretKey">
+        </div>
+        <button type="button" id="btn-addnew" class="btn btn-primary">Add New</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.onload = () => {
+        document.getElementById('btn-addnew').addEventListener('click', () => {
+            var name = document.getElementById('Name').value;
+            var secretkey = document.getElementById('SecretKey').value;
+            if (!name || !secretkey) {
+                alert('clientname,secretkey is required');
+                return;
+            }
+            HttpRequestHelper.post('/add', {
+                name: name, secretkey: secretkey
+            }).then(res => {
+                if (res.success) {
+                    window.location.href = '/index';
+                    return;
+                }
+                alert(res.message);
+            });
+        });
+    }
+</script>
+{% endblock %}

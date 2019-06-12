@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace EasyProxy.HttpServer.Route
 {
@@ -25,7 +26,10 @@ namespace EasyProxy.HttpServer.Route
             {
                 var prefix = controller.GetCustomAttribute<PrefixAttribute>()?.Prefix ?? string.Empty;
                 var actions = controller.GetMethods()
-                    .Where(m => m.ReturnType.IsAssignableFrom(typeof(IActionResult))
+                    .Where(m => (m.ReturnType.IsAssignableFrom(typeof(IActionResult))//两种形式，Task<IActionResult>,IActionResult
+                                    || (m.ReturnType.IsGenericType
+                                            && m.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
+                                            && m.ReturnType.GetGenericArguments()[0].IsAssignableFrom(typeof(IActionResult))))
                                 && m.IsPublic
                                 && !m.IsGenericMethod
                                 && (m.IsDefined(typeof(HttpGetAttribute), false)
@@ -60,8 +64,8 @@ namespace EasyProxy.HttpServer.Route
         public (IController, MethodInfo, object) Route(HttpRequest request)
         {
             var path = request.Url;
-            Type controllerType = null;
-            MethodInfo methodInfo = null;
+            Type controllerType;
+            MethodInfo methodInfo;
             switch (request.HttpMethod)
             {
                 case HttpMethod.Get:

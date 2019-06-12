@@ -49,12 +49,13 @@ namespace EasyProxy.Server.Filters
 
         private IActionResult GetFailResult(bool isApiController)
         {
-            return new HttpStatusCodeResult { StatusCode = 403 };
+            return new RedirectResult("/dashboard/login");
+            //return new HttpStatusCodeResult { StatusCode = 403 };
         }
 
         private string GetToken(ActionExecuteContext context)
         {
-            context.HttpRequest.Headers.TryGetValue("authorization", out string token);
+            context.HttpRequest.Cookies.TryGetValue("authorization", out string token);
             return token;
         }
     }

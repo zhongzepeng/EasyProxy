@@ -56,17 +56,22 @@ namespace EasyProxy.HttpServer.Middleware
                     return context.HttpResponse;
                 }
 
-                IActionResult actionResult;
-                if (parameter == null)
+                var parameters = new List<object>();
+                if (parameter != null)
                 {
-                    actionResult = methodInfo.Invoke(controller, new object[] { }) as IActionResult;
+                    parameters.Add(parameter);
+                }
+
+                if (methodInfo.ReturnType.IsGenericType) //Task<IActionResult>
+                {
+                    var actionResult = await (methodInfo.Invoke(controller, parameters.ToArray()) as Task<IActionResult>);
+                    context.HttpResponse = actionResult.ExecuteResult();
                 }
                 else
                 {
-                    actionResult = methodInfo.Invoke(controller, new object[] { parameter }) as IActionResult;
+                    var actionResult = methodInfo.Invoke(controller, parameters.ToArray()) as IActionResult;
+                    context.HttpResponse = actionResult.ExecuteResult();
                 }
-
-                context.HttpResponse = actionResult.ExecuteResult();
 
                 context.HttpResponse.Cookies.AddRange(controller.ResponseCookie);
 

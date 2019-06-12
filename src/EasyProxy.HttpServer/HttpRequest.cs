@@ -23,7 +23,8 @@ namespace EasyProxy.HttpServer
             {
                 if (cookies == null)
                 {
-                    cookies = ParseCookies(Headers["Cookie"] ?? string.Empty);
+                    Headers.TryGetValue("Cookie", out string cookiestr);
+                    cookies = ParseCookies(cookiestr);
                 }
                 return cookies;
             }
@@ -164,6 +165,11 @@ namespace EasyProxy.HttpServer
         private IDictionary<string, string> ParseCookies(string cookieString)
         {
             var dic = new Dictionary<string, string>();
+
+            if (string.IsNullOrEmpty(cookieString))
+            {
+                return dic;
+            }
             var cookieParts = cookieString.Split(';');
             foreach (var part in cookieParts)
             {

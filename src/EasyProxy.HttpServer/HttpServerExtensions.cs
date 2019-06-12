@@ -1,6 +1,8 @@
-﻿using EasyProxy.HttpServer.Controller;
+﻿using DotLiquid;
+using EasyProxy.HttpServer.Controller;
 using EasyProxy.HttpServer.Filter;
 using EasyProxy.HttpServer.Route;
+using EasyProxy.HttpServer.ViewEngine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -18,6 +20,7 @@ namespace EasyProxy.HttpServer
             services.AddSingleton(typeof(IHttpHandler), typeof(DefaultHttpHandler));
             services.AddSingleton(typeof(EasyHttpServer), typeof(EasyHttpServer));
             RegisterControllerTypes(services);
+            Template.FileSystem = new DotliquidFileSystem();
             //RegisterFilterTypes(services);
         }
 

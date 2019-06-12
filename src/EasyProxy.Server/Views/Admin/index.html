@@ -1,0 +1,49 @@
+﻿{% extends Views/Admin/layout.html %}
+{% block content %}
+<div class="row col-md-10">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <td>
+                    #
+                </td>
+                <td>
+                    Name
+                </td>
+                <td>
+                    SecretKey
+                </td>
+                <td>
+                    ChannelCount
+                </td>
+                <td>
+                    Operate
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in clients -%}
+            <tr>
+                <td>
+                    {{item.ClientId}}
+                </td>
+                <td>
+                    {{item.Name}}
+                </td>
+                <td>
+                    {{item.SecretKey}}
+                </td>
+                <td>
+                    {{item.ChannelCount}}
+                </td>
+                <td>
+                    <button type="button" class="btn btn-warning">del</button>
+                    <a href="/channel/add" class="btn btn-success">add channel</a>
+                    <a href="/channel/list" class="btn btn-primary">detail</a>
+                </td>
+            </tr>
+            {% endfor -%}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

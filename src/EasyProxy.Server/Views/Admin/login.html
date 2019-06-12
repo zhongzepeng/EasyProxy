@@ -56,13 +56,13 @@
                     alert('username，password is required');
                     return;
                 }
-                HttpRequestHelper.post('/api/login', {
+                HttpRequestHelper.post('/login', {
                     username: username,
                     password: password
                 }).then(data => {
                     if (data.success) {
                         Common.setStorage(HttpRequestHelper.TOKEN_KEY, data.data);
-                        window.location.href = '/dashboard/index';
+                        window.location.href = '/index';
                     } else {
                         alert(data.message);
                     }

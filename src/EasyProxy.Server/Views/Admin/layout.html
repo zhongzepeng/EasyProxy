@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <link href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="utf-8" />
+    <title>EasyProxy-Dashboard</title>
+    <script src="/site.js"></script>
+    <link href="/styles.css" rel="stylesheet" />
+</head>
+<body class="sidebar-fixed header-fixed">
+    <div class="page-wrapper">
+        <nav class="navbar page-header">
+            <a href="/dashboard/index" class="btn btn-link sidebar-mobile-toggle d-md-none mr-auto">
+                <i class="fa fa-bars"></i>
+            </a>
+            <a class="navbar-brand" href="#">
+                EasyProxy
+            </a>
+        </nav>
+
+        <div class="main-container">
+            <div class="sidebar">
+                <nav class="sidebar-nav open">
+                    <ul class="nav">
+                        <li class="nav-title">Client Manager</li>
+
+                        <li class="nav-item">
+                            <a href="/index" class="nav-link active">
+                                <i class="icon icon-speedometer"></i> Client List
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/add" class="nav-link active">
+                                <i class="icon icon-speedometer"></i> Add Client
+                            </a>
+                        </li>
+                        <li class="nav-title">Static</li>
+                        <li class="nav-item">
+                            <a href="/list" class="nav-link active">
+                                <i class="icon icon-speedometer"></i> Coming soom
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+
+            <div class="content">
+                {% block content %}
+                Default body
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+    {% block scripts %}
+    {% endblock %}
+</body>
+</html>
