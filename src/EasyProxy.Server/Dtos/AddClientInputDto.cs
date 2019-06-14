@@ -1,6 +1,6 @@
 ﻿namespace EasyProxy.Server.Dtos
 {
-    public class AddChannelInputDto
+    public class AddClientInputDto
     {
         public string Name { get; set; }
 

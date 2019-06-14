@@ -63,7 +63,7 @@ namespace EasyProxy.HttpServer.Route
 
         public (IController, MethodInfo, object) Route(HttpRequest request)
         {
-            var path = request.Url;
+            var path = request.AbsolutePath;
             Type controllerType;
             MethodInfo methodInfo;
             switch (request.HttpMethod)
@@ -115,7 +115,7 @@ namespace EasyProxy.HttpServer.Route
                 {
                     if (request.Query.ContainsKey(property.Name.ToLower()))
                     {
-                        property.SetValue(obj, request.Query[property.Name.ToLower()]);
+                        property.SetValue(obj, request.Query[property.Name.ToLower()].CastTo(property.PropertyType));
                     }
                 }
 

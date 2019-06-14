@@ -17,6 +17,8 @@
     <None Remove="Resource\site.js" />
     <None Remove="Resource\styles.css" />
     <None Remove="Views\Admin\add.html" />
+    <None Remove="Views\Admin\addchannel.html" />
+    <None Remove="Views\Admin\detail.html" />
     <None Remove="Views\Admin\layout.html" />
     <None Remove="Views\index.html" />
     <None Remove="Views\login.html" />

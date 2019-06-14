@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Server.Controllers
@@ -81,7 +82,7 @@ namespace EasyProxy.Server.Controllers
         }
 
         [HttpPost("/add")]
-        public async Task<IActionResult> AddAsync(AddChannelInputDto input)
+        public async Task<IActionResult> AddAsync(AddClientInputDto input)
         {
 
             await configHelper.AddClientAsync(new ClientConfig
@@ -96,6 +97,56 @@ namespace EasyProxy.Server.Controllers
         public IActionResult Delete()
         {
             return View("add");
+        }
+
+        [HttpGet("/channel/detail")]
+        public async Task<IActionResult> DetailAsync(BaseQueryInputDto input)
+        {
+            var channels = (await configHelper.GetChannelsAsync(input.Id)).Select(x => new
+            {
+                x.ChannelId,
+                x.ClientId,
+                x.BackendPort,
+                x.FrontendIp,
+                x.FrontendPort,
+                x.Name
+            }).ToList();
+
+            return View("detail", new { channels, input.Id });
+        }
+
+        [HttpGet("/channel/add")]
+        public IActionResult AddChannel(BaseQueryInputDto input)
+        {
+            return View("addchannel", new { input.Id });
+        }
+
+        [HttpPost("/channel/add")]
+        public async Task<IActionResult> AddChannelAsync(AddChannleInputDto input)
+        {
+            if (!IPAddress.TryParse(input.PrivateIp, out IPAddress address))
+            {
+                return Json(new ResultDto { Success = false, Message = "privateIp is invalid" });
+            }
+
+            var channels = await configHelper.GetChannelsAsync(input.ClientId);
+
+            if (channels.Any(x => x.BackendPort == input.PublicPort))
+            {
+                return Json(new ResultDto { Success = false, Message = "public port already exists" });
+            }
+
+            await configHelper.AddChannelAsync(new ChannelConfig
+            {
+
+                BackendPort = input.PublicPort,
+                FrontendIp = input.PrivateIp,
+                FrontendPort = input.PrivatePort,
+                Name = input.Name,
+                ClientId = input.ClientId
+            });
+
+            return Json(new ResultDto { Success = true });
         }
 
         public override Task OnActionExecutedAsync(ActionExecuteContext context)

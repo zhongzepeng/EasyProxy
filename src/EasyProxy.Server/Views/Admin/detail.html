@@ -11,10 +11,13 @@
                     Name
                 </td>
                 <td>
-                    SecretKey
+                    Public Port
                 </td>
                 <td>
-                    ChannelCount
+                    Private Port
+                </td>
+                <td>
+                    Private Ip
                 </td>
                 <td>
                     Operate
@@ -22,28 +25,30 @@
             </tr>
         </thead>
         <tbody>
-            {% for item in clients -%}
+            {% for item in channels -%}
             <tr>
                 <td>
-                    {{item.ClientId}}
+                    {{item.ChannelId}}
                 </td>
                 <td>
                     {{item.Name}}
                 </td>
                 <td>
-                    {{item.SecretKey}}
+                    {{item.BackendPort}}
                 </td>
                 <td>
-                    {{item.ChannelCount}}
+                    {{item.FrontendPort}}
+                </td>
+                <td>
+                    {{item.FrontendIp}}
                 </td>
                 <td>
                     <button type="button" class="btn btn-warning">del</button>
-                    <a href="/channel/add?id={{item.ClientId}}" class="btn btn-success">add channel</a>
-                    <a href="/channel/detail?id={{item.ClientId}}" class="btn btn-primary">detail</a>
                 </td>
             </tr>
             {% endfor -%}
         </tbody>
     </table>
+    <a href="/channel/add?id={{Id}}" class="btn btn-success">Add Channel</a>
 </div>
 {% endblock %}

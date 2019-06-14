@@ -56,7 +56,7 @@ namespace EasyProxy.HttpServer
         {
             get
             {
-                return new Uri($"{Host}/{Url}");
+                return new Uri($"http://{Host}{Url}");
             }
         }
 

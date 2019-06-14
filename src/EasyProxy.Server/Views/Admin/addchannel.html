@@ -1,0 +1,52 @@
+﻿{% extends Views/Admin/layout.html %}
+{% block content %}
+<div class="row col-md-10">
+    <div>
+        <input type="hidden" id="clientId" value="{{Id}}" />
+        <div class="form-group">
+            <label for="Name">Name</label>
+            <input type="text" class="form-control" id="Name" placeholder="Channel Name">
+        </div>
+        <div class="form-group">
+            <label for="PublicPort">Public Port</label>
+            <input type="text" class="form-control" id="PublicPort" placeholder="Public Port">
+        </div>
+        <div class="form-group">
+            <label for="PrivatePort	">Private Port</label>
+            <input type="text" class="form-control" id="PrivatePort" placeholder="Private Port">
+        </div>
+        <div class="form-group">
+            <label for="PublicPort">Private Ip</label>
+            <input type="text" class="form-control" id="PrivateIp" placeholder="Private Ip">
+        </div>
+        <button type="button" id="btn-addnew" class="btn btn-primary">Add New</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.onload = () => {
+        document.getElementById('btn-addnew').addEventListener('click', () => {
+            var name = document.getElementById('Name').value;
+            var publicPort = document.getElementById('PublicPort').value;
+            var privatePort = document.getElementById('PrivatePort').value;
+            var privateIp = document.getElementById('PrivateIp').value;
+            var clientId = document.getElementById('clientId').value;
+            if (!name || !publicPort || !privateIp || !privatePort) {
+                alert('all fileds is required');
+                return;
+            }
+            HttpRequestHelper.post('/channel/add', {
+                name, publicPort, privatePort, privateIp, clientId
+            }).then(res => {
+                if (res.success) {
+                    window.location.href = '/channel/detail?id=' + clientId;
+                    return;
+                }
+                alert(res.message);
+            });
+        });
+    }
+</script>
+{% endblock %}
