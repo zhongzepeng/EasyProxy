@@ -98,7 +98,8 @@ namespace EasyProxy.Core.Channel
                     var read = await ReceiveAsync(memory);
                     if (read == 0)
                     {
-                        break;
+                        continue;
+                        //break;
                     }
                     writer.Advance(read);
                 }
@@ -124,6 +125,7 @@ namespace EasyProxy.Core.Channel
 
                 if (result.IsCompleted)
                 {
+                    logger.LogWarning($"completed:{result.IsCompleted}");
                     break;
                 }
             }

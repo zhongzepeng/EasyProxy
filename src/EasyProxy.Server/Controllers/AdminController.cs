@@ -94,9 +94,11 @@ namespace EasyProxy.Server.Controllers
         }
 
         [HttpPost("/del")]
-        public IActionResult Delete()
+        public async Task<IActionResult> DeleteAsync(BaseQueryInputDto input)
         {
-            return View("add");
+            await configHelper.RemoveClientAsync(input.Id);
+
+            return Json(new ResultDto { Success = true });
         }
 
         [HttpGet("/channel/detail")]
@@ -149,16 +151,11 @@ namespace EasyProxy.Server.Controllers
             return Json(new ResultDto { Success = true });
         }
 
-        public override Task OnActionExecutedAsync(ActionExecuteContext context)
+        [HttpPost("/channel/del")]
+        public async Task<IActionResult> DeleteChannelAsync(BaseQueryInputDto input)
         {
-            logger.LogInformation("controller ed");
-            return Task.CompletedTask;
-        }
-
-        public override Task OnActionExecutingAsync(ActionExecuteContext context)
-        {
-            logger.LogInformation("controller ing");
-            return Task.CompletedTask;
+            await configHelper.RemoveChannelAsync(input.Id);
+            return Json(new ResultDto() { Success = true });
         }
     }
 }

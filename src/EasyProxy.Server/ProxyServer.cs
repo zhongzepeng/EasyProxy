@@ -49,7 +49,7 @@ namespace EasyProxy.Server
             {
                 _ = StartDashboardAsync();
             }
-            //await StartProxyServer();
+            await StartProxyServer();
             await Task.CompletedTask;
         }
 
@@ -75,7 +75,7 @@ namespace EasyProxy.Server
 
         private void OnProxyClosed(object sender, EventArgs e)
         {
-            logger.LogInformation("Auth channel closed");
+            logger.LogError("ProxyClosed");
         }
 
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
@@ -133,11 +133,6 @@ namespace EasyProxy.Server
 
         private Task StartDashboardAsync()
         {
-            //var httpServer = new EasyHttpServer(new HttpServerOptions
-            //{
-            //    Address = options.DashboardHost,
-            //    Port = options.DashboardPort
-            //}, logger);
             httpServer.RequestError += async (e, req) =>
             {
                 logger.LogError("", e);

@@ -37,7 +37,7 @@
                     {{item.ChannelCount}}
                 </td>
                 <td>
-                    <button type="button" class="btn btn-warning">del</button>
+                    <a data-clientId="{{item.ClientId}}" class="btn btn-warning delete-btn">del</a>
                     <a href="/channel/add?id={{item.ClientId}}" class="btn btn-success">add channel</a>
                     <a href="/channel/detail?id={{item.ClientId}}" class="btn btn-primary">detail</a>
                 </td>
@@ -46,4 +46,26 @@
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+    window.onload = () => {
+        for (var i = 0; i < document.getElementsByClassName('delete-btn').length; i++) {
+            var item = document.getElementsByClassName('delete-btn')[i];
+            item.addEventListener('click', () => {
+                var clientId = item.attributes["data-clientid"].value;
+                HttpRequestHelper.post('/del', {
+                    Id: clientId
+                }).then(res => {
+                    if (res.success) {
+                        window.location.reload();
+                        return;
+                    }
+                    alert(res.message);
+                });
+            });
+        }
+    }
+</script>
 {% endblock %}

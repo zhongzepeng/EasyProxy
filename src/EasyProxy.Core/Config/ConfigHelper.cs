@@ -33,6 +33,8 @@ namespace EasyProxy.Core.Config
         {
             var conn = await GetConnectionAsync();
 
+            await conn.ExecuteAsync("Delete from Channel where ClientId=@clientId", new { clientId });
+
             await conn.ExecuteAsync("Delete from Client where ClientId=@clientId", new { clientId });
         }
 

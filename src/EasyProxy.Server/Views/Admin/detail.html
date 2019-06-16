@@ -43,7 +43,7 @@
                     {{item.FrontendIp}}
                 </td>
                 <td>
-                    <button type="button" class="btn btn-warning">del</button>
+                    <button type="button" data-channelid="{{item.ChannelId}}" class="btn btn-warning delete-btn">del</button>
                 </td>
             </tr>
             {% endfor -%}
@@ -51,4 +51,26 @@
     </table>
     <a href="/channel/add?id={{Id}}" class="btn btn-success">Add Channel</a>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+    window.onload = () => {
+        for (var i = 0; i < document.getElementsByClassName('delete-btn').length; i++) {
+            var item = document.getElementsByClassName('delete-btn')[i];
+            item.addEventListener('click', () => {
+                var channelId = item.attributes["data-channelid"].value;
+                HttpRequestHelper.post('/channel/del', {
+                    Id: channelId
+                }).then(res => {
+                    if (res.success) {
+                        window.location.reload();
+                        return;
+                    }
+                    alert(res.message);
+                });
+            });
+        }
+    }
+</script>
 {% endblock %}
