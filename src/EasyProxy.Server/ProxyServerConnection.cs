@@ -46,7 +46,6 @@ namespace EasyProxy.Server
                 {
                     var clientSocket = await socket.AcceptAsync();
                     var connectionId = idGenerator.Next();
-                    logger.LogInformation($"connectionId:{connectionId}");
                     var channel = new MarkedProxyChannel(connectionId, clientSocket, logger, new ChannelOptions());
                     channel.DataReceived += OnDataReceived;
                     channel.Closed += OnMarkedProxyChannelClosedAsync;

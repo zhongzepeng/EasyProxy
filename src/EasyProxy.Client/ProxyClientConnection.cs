@@ -90,25 +90,20 @@ namespace EasyProxy.Client
         private async Task ProcessTransfer(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
             IChannel targetChannel;
-            logger.LogInformation($"datareceive:{package.ConnectionId}");
             if (!serverChannelHolder.ContainsKey(package.ConnectionId))
             {
                 var targetEp = new IPEndPoint(IPAddress.Parse(channelConfig.FrontendIp), channelConfig.FrontendPort);
                 var wrapper = new TimeoutSocketWrapper(targetEp);
                 var nsocket = wrapper.Connect(channelOptions.ConnectTimeout);
-                logger.LogInformation($"datareceive1111:{package.ConnectionId}");
                 if (nsocket == null)
                 {
-                    logger.LogInformation("Connect target fail");
                     await SendDisconnectPackage(channel, package.ConnectionId);
                     return;
                 }
-                logger.LogInformation($"datareceive222:{package.ConnectionId}");
-
                 var connectionId = package.ConnectionId;
                 targetChannel = new MarkedProxyChannel(connectionId, nsocket, logger, channelOptions);
                 targetChannel.DataReceived += OnDataReceived;
-                targetChannel.Closed += OnChannelClosedAsync;
+                //targetChannel.Closed += OnChannelClosedAsync;
                 serverChannelHolder[package.ConnectionId] = targetChannel;
                 _ = targetChannel.StartAsync();
             }
@@ -130,13 +125,6 @@ namespace EasyProxy.Client
                 Type = PackageType.Transfer
             };
             await proxyChannel.SendAsync(package);
-        }
-
-        private async Task OnChannelClosedAsync(object sender)
-        {
-            //var channel = sender as MarkedProxyChannel;
-            //await SendDisconnectPackage(proxyChannel, channel.Mark);
-            //logger.LogInformation($"channel:{channel.Mark} closed");
         }
 
         private async Task SendDisconnectPackage(IChannel<ProxyPackage> channel, long connectionId)

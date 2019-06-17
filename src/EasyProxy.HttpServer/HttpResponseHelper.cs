@@ -1,52 +1,34 @@
-﻿using System;
+﻿using EasyProxy.HttpServer.Result;
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EasyProxy.HttpServer
 {
     public static class HttpResponseHelper
     {
-        private static Stream errorPageStream;
-        private static Stream deafultPageStream;
-        private static Stream notfoundPageStream;
-        static HttpResponseHelper()
-        {
-            notfoundPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.notfound.html");
-            deafultPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.default.html");
-            errorPageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EasyProxy.HttpServer.DefaultPages.error.html");
-        }
 
-        public static HttpResponse CreateDefaultPageResponse()
+        public static async Task<HttpResponse> CreateDefaultErrorResponseAsync(Exception e)
         {
-            var res = new HttpResponse();
-            deafultPageStream.Seek(0, SeekOrigin.Begin);
-            deafultPageStream.CopyTo(res.Body);
-            res.Body.Seek(0, SeekOrigin.Begin);
-            return res;
-        }
-
-        public static HttpResponse CreateDefaultErrorResponse(Exception e)
-        {
-            var res = new HttpResponse
+            var defaultPageResult = new DefaultPageResult
             {
-                StatusCode = 500
+                StatusCode = 500,
             };
-            errorPageStream.Seek(0, SeekOrigin.Begin);
-            errorPageStream.CopyTo(res.Body);
-            res.Body.Seek(0, SeekOrigin.Begin);
-            return res;
+
+            return await defaultPageResult.ExecuteResultAsync();
         }
 
-        public static HttpResponse CreateNotFoundResponse()
+        public static async Task<HttpResponse> CreateNotFoundResponseAsync()
         {
-            var res = new HttpResponse
+            var defaultPageResult = new DefaultPageResult
             {
-                StatusCode = 404
+                StatusCode = 404,
             };
-            res.WriteBody(notfoundPageStream);
-            return res;
+
+            return await defaultPageResult.ExecuteResultAsync();
         }
 
 

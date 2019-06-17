@@ -2,6 +2,7 @@
 using EasyProxy.HttpServer.Filter;
 using EasyProxy.HttpServer.Result;
 using EasyProxy.HttpServer.Route;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -29,7 +30,7 @@ namespace EasyProxy.HttpServer.Middleware
                 var (controller, methodInfo, parameter) = route.Route(httpRequest);
                 if (controller == null)
                 {
-                    return HttpResponseHelper.CreateNotFoundResponse();
+                    return await HttpResponseHelper.CreateNotFoundResponseAsync();
                 }
 
                 context.Controller = controller;
@@ -65,12 +66,12 @@ namespace EasyProxy.HttpServer.Middleware
                 if (methodInfo.ReturnType.IsGenericType) //Task<IActionResult>
                 {
                     var actionResult = await (methodInfo.Invoke(controller, parameters.ToArray()) as Task<IActionResult>);
-                    context.HttpResponse = actionResult.ExecuteResult();
+                    context.HttpResponse = await actionResult.ExecuteResultAsync();
                 }
                 else
                 {
                     var actionResult = methodInfo.Invoke(controller, parameters.ToArray()) as IActionResult;
-                    context.HttpResponse = actionResult.ExecuteResult();
+                    context.HttpResponse = await actionResult.ExecuteResultAsync();
                 }
 
                 context.HttpResponse.Cookies.AddRange(controller.ResponseCookie);
@@ -94,9 +95,9 @@ namespace EasyProxy.HttpServer.Middleware
                 }
                 return context.HttpResponse;
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                return HttpResponseHelper.CreateDefaultErrorResponse(e);
+                return await HttpResponseHelper.CreateDefaultErrorResponseAsync(e);
             }
         }
 

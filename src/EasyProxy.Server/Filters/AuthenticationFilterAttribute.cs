@@ -31,7 +31,7 @@ namespace EasyProxy.Server.Filters
             var token = GetToken(context);
             if (string.IsNullOrEmpty(token))
             {
-                context.HttpResponse = failResut.ExecuteResult();
+                context.HttpResponse = await failResut.ExecuteResultAsync();
                 context.Final = true;
                 return;
             }
@@ -39,7 +39,7 @@ namespace EasyProxy.Server.Filters
 
             if (!success)
             {
-                context.HttpResponse = failResut.ExecuteResult();
+                context.HttpResponse = await failResut.ExecuteResultAsync();
                 context.Final = true;
                 return;
             }
@@ -50,7 +50,6 @@ namespace EasyProxy.Server.Filters
         private IActionResult GetFailResult(bool isApiController)
         {
             return new RedirectResult("/login");
-            //return new HttpStatusCodeResult { StatusCode = 403 };
         }
 
         private string GetToken(ActionExecuteContext context)

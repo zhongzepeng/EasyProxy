@@ -1,4 +1,6 @@
-﻿namespace EasyProxy.HttpServer.Result
+﻿using System.Threading.Tasks;
+
+namespace EasyProxy.HttpServer.Result
 {
     public class RedirectResult : IActionResult
     {
@@ -8,8 +10,9 @@
         }
         public string Url { get; set; }
 
-        public HttpResponse ExecuteResult()
+        public async Task<HttpResponse> ExecuteResultAsync()
         {
+            await Task.CompletedTask;
             var res = new HttpResponse
             {
                 StatusCode = 302

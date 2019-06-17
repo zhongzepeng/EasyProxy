@@ -16,7 +16,9 @@ namespace EasyProxy.Client
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddSingleton<ProxyClient>();
+
             var configuration = BuildConfiguration();
+
             serviceCollection.AddSingleton(configuration);
             serviceCollection.AddLogging(configure => configure.AddConsole());
             serviceCollection.AddSingleton<ConfigHelper>();

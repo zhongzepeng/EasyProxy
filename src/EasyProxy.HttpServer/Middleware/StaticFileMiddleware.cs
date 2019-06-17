@@ -47,7 +47,7 @@ namespace EasyProxy.HttpServer.Middleware
 
             if (!fileinfo.Exists)
             {
-                return HttpResponseHelper.CreateNotFoundResponse();
+                return await HttpResponseHelper.CreateNotFoundResponseAsync();
             }
 
             using (var stream = fileinfo.CreateReadStream())
@@ -56,7 +56,7 @@ namespace EasyProxy.HttpServer.Middleware
                 {
                     ContentType = EnableFileTypes[ext],
                 };
-                res.WriteBody(stream);
+                await res.WriteBodyAsync(stream);
                 res.Headers.Add("Cache-Control", DefaultCacheStrategy);
                 return res;
             }

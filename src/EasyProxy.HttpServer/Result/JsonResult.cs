@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace EasyProxy.HttpServer.Result
 {
@@ -10,13 +11,14 @@ namespace EasyProxy.HttpServer.Result
             Data = data;
         }
         public object Data { get; set; }
-        public HttpResponse ExecuteResult()
+
+        public async Task<HttpResponse> ExecuteResultAsync()
         {
             var result = new HttpResponse
             {
                 ContentType = "application/json"
             };
-            result.Body.Write(Constants.DefaultEncoding.GetBytes(JsonConvert.SerializeObject(Data, serializerSettings)));
+            await result.Body.WriteAsync(Constants.DefaultEncoding.GetBytes(JsonConvert.SerializeObject(Data, serializerSettings)));
             result.Body.Seek(0, System.IO.SeekOrigin.Begin);
             return result;
         }

@@ -1,6 +1,7 @@
 ﻿using EasyProxy.HttpServer.Cookie;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace EasyProxy.HttpServer
 {
@@ -24,19 +25,19 @@ namespace EasyProxy.HttpServer
 
         public string ContentType { get; set; } = "text/html; charset=utf-8";
 
-        public void WriteBody(byte[] content)
+        public async Task WriteBodyAsync(byte[] content)
         {
-            Body.Write(content);
+            await Body.WriteAsync(content);
             Body.Seek(0, SeekOrigin.Begin);
         }
 
-        public void WriteBody(Stream stream)
+        public async Task WriteBodyAsync(Stream stream)
         {
             if (stream.CanSeek)
             {
                 stream.Seek(0, SeekOrigin.Begin);
             }
-            stream.CopyTo(Body);
+            await stream.CopyToAsync(Body);
             Body.Seek(0, SeekOrigin.Begin);
         }
     }

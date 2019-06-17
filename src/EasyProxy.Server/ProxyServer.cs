@@ -30,14 +30,18 @@ namespace EasyProxy.Server
             , ProxyPackageDecoder decoder
             , ProxyPackageEncoder encoder
             , IIdGenerator idGenerator
-            , EasyHttpServer httpServer)
+            , EasyHttpServer httpServer
+            , ConfigHelper configHelper)
         {
             this.logger = logger;
             this.options = options?.Value;
+
             Checker.NotNull(this.options);
+
             this.decoder = decoder;
             this.encoder = encoder;
-            configHelper = new ConfigHelper();
+
+            this.configHelper = configHelper;
             this.idGenerator = idGenerator;
             this.httpServer = httpServer;
         }
@@ -134,9 +138,8 @@ namespace EasyProxy.Server
         {
             httpServer.RequestError += async (e, req) =>
             {
-                logger.LogError("", e);
-                await Task.CompletedTask;
-                return HttpResponseHelper.CreateDefaultErrorResponse(req);
+                logger.LogError("config server errror", e);
+                return await HttpResponseHelper.CreateDefaultErrorResponseAsync(req);
             };
             return httpServer.ListenAsync();
         }

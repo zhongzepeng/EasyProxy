@@ -1,7 +1,9 @@
-﻿namespace EasyProxy.HttpServer.Result
+﻿using System.Threading.Tasks;
+
+namespace EasyProxy.HttpServer.Result
 {
     public interface IActionResult
     {
-        HttpResponse ExecuteResult();
+        Task<HttpResponse> ExecuteResultAsync();
     }
 }

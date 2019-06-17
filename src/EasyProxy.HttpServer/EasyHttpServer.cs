@@ -40,7 +40,6 @@ namespace EasyProxy.HttpServer
                 while (true)
                 {
                     var httpSocket = await serverSocket.AcceptAsync();
-                    //httpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                     logger.LogDebug($"accept new {httpSocket.RemoteEndPoint}");
                     var httpChannel = new HttpChannel(httpSocket, logger, new ChannelOptions());
                     httpChannel.HttpRequested += OnHttpRequested;
@@ -62,11 +61,14 @@ namespace EasyProxy.HttpServer
                 logger.LogError("Exception throw ProccessAsync", e);
                 httpResponse = await OnRequestError(request, e);
             }
+
             if (request.Headers.ContainsKey("Connection"))
             {
                 httpResponse.Headers.Add("Connection", request.Headers["Connection"]);
             }
+
             var res = httpResponse.ToHttpProtocolData();
+
             await channel.SendAsync(res);
         }
     }
