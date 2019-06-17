@@ -49,7 +49,6 @@ namespace EasyProxy.Server
                 _ = StartDashboardAsync();
             }
             await StartProxyServer();
-            await Task.CompletedTask;
         }
 
         private async Task StartProxyServer()

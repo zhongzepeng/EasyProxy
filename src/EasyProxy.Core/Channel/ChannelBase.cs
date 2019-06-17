@@ -14,7 +14,7 @@ namespace EasyProxy.Core.Channel
 
         protected virtual async Task OnClosedAsync()
         {
-            await Closed?.Invoke(this);
+            await (Closed?.Invoke(this) ?? Task.CompletedTask);
         }
 
         protected async Task<SequencePosition> OnDataReceived(ReadOnlySequence<byte> sequence)

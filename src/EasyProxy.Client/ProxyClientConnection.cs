@@ -79,7 +79,12 @@ namespace EasyProxy.Client
         }
         private async Task ProcessDisconect(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
-            logger.LogInformation("收到服务端发送的断开连接");
+            if (serverChannelHolder.ContainsKey(package.ConnectionId))
+            {
+                //logger.LogInformation("收到服务端发送的断开连接");
+                serverChannelHolder[package.ConnectionId].Close();
+                serverChannelHolder.Remove(package.ConnectionId);
+            }
             await Task.CompletedTask;
         }
         private async Task ProcessTransfer(IChannel<ProxyPackage> channel, ProxyPackage package)
@@ -129,9 +134,9 @@ namespace EasyProxy.Client
 
         private async Task OnChannelClosedAsync(object sender)
         {
-            var channel = sender as MarkedProxyChannel;
-            await SendDisconnectPackage(proxyChannel, channel.Mark);
-            logger.LogInformation($"channel:{channel.Mark} closed");
+            //var channel = sender as MarkedProxyChannel;
+            //await SendDisconnectPackage(proxyChannel, channel.Mark);
+            //logger.LogInformation($"channel:{channel.Mark} closed");
         }
 
         private async Task SendDisconnectPackage(IChannel<ProxyPackage> channel, long connectionId)

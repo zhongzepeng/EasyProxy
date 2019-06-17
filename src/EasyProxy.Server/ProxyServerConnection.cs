@@ -58,10 +58,14 @@ namespace EasyProxy.Server
 
         private async Task OnMarkedProxyChannelClosedAsync(IChannel sender)
         {
-            var channel = sender as MarkedProxyChannel;
-            channel.Close();
-            clientChannelHolder.TryRemove(channel.Mark, out _);
-            await Task.CompletedTask;
+            var markedChannel = sender as MarkedProxyChannel;
+            markedChannel.Close();
+            clientChannelHolder.TryRemove(markedChannel.Mark, out _);
+            await channel.SendAsync(new ProxyPackage
+            {
+                Type = PackageType.Disconnect,
+                ConnectionId = markedChannel.Mark
+            });
         }
 
         private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)
