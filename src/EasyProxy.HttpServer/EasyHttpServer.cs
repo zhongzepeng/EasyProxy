@@ -41,7 +41,7 @@ namespace EasyProxy.HttpServer
                 {
                     var httpSocket = await serverSocket.AcceptAsync();
                     //httpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                    logger.LogInformation($"accept new {httpSocket.RemoteEndPoint}");
+                    logger.LogDebug($"accept new {httpSocket.RemoteEndPoint}");
                     var httpChannel = new HttpChannel(httpSocket, logger, new ChannelOptions());
                     httpChannel.HttpRequested += OnHttpRequested;
                     _ = httpChannel.StartAsync();
@@ -51,7 +51,7 @@ namespace EasyProxy.HttpServer
 
         private async Task OnHttpRequested(HttpChannel channel, HttpRequest request)
         {
-            logger.LogInformation($"httprequest:{request}");
+            logger.LogDebug($"httprequest:{request}");
             HttpResponse httpResponse;
             try
             {

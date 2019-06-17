@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace EasyProxy.Core.Channel
@@ -16,49 +15,16 @@ namespace EasyProxy.Core.Channel
         protected Socket socket;
         private List<ArraySegment<byte>> segmentsForSend;
         private readonly ChannelOptions options;
-        private readonly CancellationToken cancellationToken;
-        private readonly CancellationTokenSource cancellationTokenSource;
         public ProxyChannel(Socket socket, ILogger logger, ChannelOptions options) : base(logger)
         {
             this.socket = socket;
             this.options = options;
-            cancellationTokenSource = new CancellationTokenSource();
-            cancellationToken = cancellationTokenSource.Token;
         }
 
-        protected bool IsClosed
-        {
-            get
-            {
-                return cancellationToken.IsCancellationRequested;
-            }
-        }
-
-        protected override void OnClosed()
-        {
-            //socket = null;
-            base.OnClosed();
-        }
+        protected bool IsClosed { get; set; }
 
         public override void Close()
         {
-            //var tsocket = socket;
-            //if (tsocket == null)
-            //{
-            //    return;
-            //}
-
-            //if (Interlocked.CompareExchange(ref socket, null, tsocket) == tsocket)
-            //{
-            //    try
-            //    {
-            //        socket?.Shutdown(SocketShutdown.Both);
-            //    }
-            //    finally
-            //    {
-            //        tsocket?.Close();
-            //    }
-            //}
             try
             {
                 socket?.Shutdown(SocketShutdown.Both);
@@ -68,7 +34,7 @@ namespace EasyProxy.Core.Channel
                 socket?.Close();
             }
             socket = null;
-            cancellationTokenSource.Cancel();
+            IsClosed = true;
         }
 
         protected override async Task ProcessReadAsync()
@@ -98,8 +64,8 @@ namespace EasyProxy.Core.Channel
                     var read = await ReceiveAsync(memory);
                     if (read == 0)
                     {
-                        continue;
-                        //break;
+                        //continue;
+                        break;
                     }
                     writer.Advance(read);
                 }

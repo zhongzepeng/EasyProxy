@@ -5,7 +5,6 @@ using EasyProxy.Core.Common;
 using EasyProxy.Core.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -53,8 +52,6 @@ namespace EasyProxy.Client
 
             authChannel.PackageReceived += OnAuthPackageReceived;
 
-            authChannel.Closed += OnAuthChannelClosed;
-
             _ = authChannel.StartAsync();
 
             await authChannel.SendAsync(new ProxyPackage
@@ -93,11 +90,6 @@ namespace EasyProxy.Client
 
             authChannel.Close();
             await Task.CompletedTask;
-        }
-
-        private void OnAuthChannelClosed(object sender, EventArgs e)
-        {
-            logger.LogInformation("Authentication channle closed");
         }
 
         public async Task StopAsync()

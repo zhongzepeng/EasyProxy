@@ -24,7 +24,6 @@ namespace EasyProxy.Server
         {
             this.channelId = channelId;
             this.channel = channel;
-            this.channel.Closed += OnChannelClosed;
             this.channel.PackageReceived += OnPackageReceived;
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             backendPort = port;
@@ -50,19 +49,20 @@ namespace EasyProxy.Server
                     logger.LogInformation($"connectionId:{connectionId}");
                     var channel = new MarkedProxyChannel(connectionId, clientSocket, logger, new ChannelOptions());
                     channel.DataReceived += OnDataReceived;
-                    channel.Closed += OnMarkedProxyChannelClosed;
+                    channel.Closed += OnMarkedProxyChannelClosedAsync;
                     _ = channel.StartAsync();
                     clientChannelHolder.TryAdd(connectionId, channel);
                 }
             });
         }
 
-        private void OnMarkedProxyChannelClosed(object sender, EventArgs e)
+        private async Task OnMarkedProxyChannelClosedAsync(IChannel sender)
         {
             var channel = sender as MarkedProxyChannel;
             channel.Close();
             clientChannelHolder.TryRemove(channel.Mark, out _);
-        }  
+            await Task.CompletedTask;
+        }
 
         private async Task<SequencePosition> OnDataReceived(IChannel channel, ReadOnlySequence<byte> buffer)
         {
@@ -76,10 +76,6 @@ namespace EasyProxy.Server
         public async Task StopAsync()
         {
             await Task.CompletedTask;
-        }
-
-        private void OnChannelClosed(object sender, EventArgs e)
-        {
         }
 
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)

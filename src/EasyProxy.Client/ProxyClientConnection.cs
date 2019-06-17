@@ -127,10 +127,10 @@ namespace EasyProxy.Client
             await proxyChannel.SendAsync(package);
         }
 
-        private void OnChannelClosedAsync(object sender, EventArgs e)
+        private async Task OnChannelClosedAsync(object sender)
         {
             var channel = sender as MarkedProxyChannel;
-            _ = SendDisconnectPackage(proxyChannel, channel.Mark);
+            await SendDisconnectPackage(proxyChannel, channel.Mark);
             logger.LogInformation($"channel:{channel.Mark} closed");
         }
 

@@ -7,7 +7,6 @@ using EasyProxy.Core.Model;
 using EasyProxy.HttpServer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -67,15 +66,16 @@ namespace EasyProxy.Server
                     var clientSocket = await socket.AcceptAsync();
                     var proxyChannel = new ProxyChannel<ProxyPackage>(clientSocket, encoder, decoder, logger, new ChannelOptions());
                     proxyChannel.PackageReceived += OnPackageReceived;
-                    proxyChannel.Closed += OnProxyClosed;
+                    proxyChannel.Closed += OnProxyClosedAsync;
                     _ = proxyChannel.StartAsync();
                 }
             });
         }
 
-        private void OnProxyClosed(object sender, EventArgs e)
+        private async Task OnProxyClosedAsync(object sender)
         {
             logger.LogError("ProxyClosed");
+            await Task.CompletedTask;
         }
 
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)

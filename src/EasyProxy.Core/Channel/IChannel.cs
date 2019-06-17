@@ -12,7 +12,7 @@ namespace EasyProxy.Core.Channel
 
         ValueTask SendAsync(ReadOnlyMemory<byte> buffer);
 
-        event EventHandler Closed;
+        event Func<IChannel, Task> Closed;
 
         void Close();
     }

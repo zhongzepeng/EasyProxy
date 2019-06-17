@@ -6,15 +6,15 @@ namespace EasyProxy.Core.Channel
 {
     public abstract class ChannelBase : IChannel
     {
-        public event EventHandler Closed;
+        public event Func<IChannel, Task> Closed;
 
         public event Func<IChannel, ReadOnlySequence<byte>, Task<SequencePosition>> DataReceived;
 
         public abstract void Close();
 
-        protected virtual void OnClosed()
+        protected virtual async Task OnClosedAsync()
         {
-            Closed?.Invoke(this, EventArgs.Empty);
+            await Closed?.Invoke(this);
         }
 
         protected async Task<SequencePosition> OnDataReceived(ReadOnlySequence<byte> sequence)
