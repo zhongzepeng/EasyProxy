@@ -1,4 +1,5 @@
-﻿using EasyProxy.Core;
+﻿using System.Threading;
+using EasyProxy.Core;
 using EasyProxy.Core.Codec;
 using EasyProxy.Core.Config;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +14,18 @@ namespace EasyProxy.Client
     class Program
     {
         static async Task Main(string[] args)
+        {
+            await RunClient();
+        }
+
+        static IConfiguration BuildConfiguration()
+        {
+            var builder = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+            return builder.Build();
+        }
+
+        static async Task RunClient()
         {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddSingleton<ProxyClient>();
@@ -31,14 +44,23 @@ namespace EasyProxy.Client
 
             await client.StartAsync();
 
-            Console.Read();
-        }
+            var logger = serviceProvider.GetService(typeof(ILogger<ProxyClient>)) as ILogger;
 
-        static IConfiguration BuildConfiguration()
-        {
-            var builder = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-            return builder.Build();
+            await client.AuthChannelTask;
+
+            logger.LogInformation("Press Ctrl+C to Exits");
+
+            Console.CancelKeyPress += async (sender, e) =>
+            {
+                e.Cancel = true;
+
+                logger.LogInformation("closing...");
+
+                await client.StopAsync();
+            };
+            await Task.WhenAll(client.ChannelTasks);
+
+            logger.LogInformation("byebye!!");
         }
     }
 }

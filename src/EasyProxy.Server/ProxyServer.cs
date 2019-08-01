@@ -1,4 +1,5 @@
-﻿using EasyProxy.Core;
+﻿using System.Collections.Generic;
+using EasyProxy.Core;
 using EasyProxy.Core.Channel;
 using EasyProxy.Core.Codec;
 using EasyProxy.Core.Common;
@@ -24,6 +25,8 @@ namespace EasyProxy.Server
         private readonly ConfigHelper configHelper;
         private readonly IIdGenerator idGenerator;
         private readonly EasyHttpServer httpServer;
+
+        private readonly Dictionary<int, ProxyServerConnection> proxyServerConnectionHolder = new Dictionary<int, ProxyServerConnection>();
 
         public ProxyServer(IOptions<ServerOptions> options
             , ILogger<ProxyServer> logger
@@ -77,7 +80,6 @@ namespace EasyProxy.Server
 
         private async Task OnProxyClosedAsync(object sender)
         {
-            logger.LogError("ProxyClosed");
             await Task.CompletedTask;
         }
 
@@ -131,6 +133,13 @@ namespace EasyProxy.Server
         {
             var channelConfig = await configHelper.GetChannelAsync(package.ChannelId);
             var connection = new ProxyServerConnection(package.ChannelId, channel, channelConfig.BackendPort, logger, idGenerator);
+            if (proxyServerConnectionHolder.ContainsKey(package.ChannelId))
+            {
+                await proxyServerConnectionHolder[package.ChannelId].StopAsync();
+                proxyServerConnectionHolder.Remove(package.ChannelId);
+            }
+
+            proxyServerConnectionHolder[package.ChannelId] = connection;
             await connection.StartAsync();
         }
 

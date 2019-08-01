@@ -12,9 +12,10 @@ namespace EasyProxy.Core.Channel
 
         ValueTask SendAsync(ReadOnlyMemory<byte> buffer);
 
+        event Func<IChannel, Task> Closing;
         event Func<IChannel, Task> Closed;
 
-        void Close();
+        Task Close();
     }
 
     public interface IChannel<TPackage> : IChannel where TPackage : class

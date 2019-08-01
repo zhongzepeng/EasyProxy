@@ -23,7 +23,7 @@ namespace EasyProxy.Core.Channel
 
         protected bool IsClosed { get; set; }
 
-        public override void Close()
+        public override async Task Close()
         {
             try
             {
@@ -35,6 +35,7 @@ namespace EasyProxy.Core.Channel
             }
             socket = null;
             IsClosed = true;
+            await Task.CompletedTask;
         }
 
         protected override async Task ProcessReadAsync()
@@ -73,7 +74,7 @@ namespace EasyProxy.Core.Channel
                 {
                     if (socketException.ErrorCode == 10054 || socketException.ErrorCode == 995)
                     {
-                        logger.LogInformation("channel close");
+                        logger.LogDebug("channel close");
                     }
                     else
                     {

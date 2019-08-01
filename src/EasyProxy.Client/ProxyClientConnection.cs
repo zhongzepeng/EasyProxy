@@ -47,12 +47,20 @@ namespace EasyProxy.Client
             await serverSocket.ConnectAsync(endpoint);
             proxyChannel = new ProxyChannel<ProxyPackage>(serverSocket, encoder, decoder, logger, channelOptions);
             proxyChannel.PackageReceived += OnPackageReceived;
-            _ = proxyChannel.StartAsync();
+            proxyChannel.Closed += OnProxyChannelClosed;
+            var task = proxyChannel.StartAsync();
             await proxyChannel.SendAsync(new ProxyPackage
             {
                 ChannelId = channelConfig.ChannelId,
                 Type = PackageType.Connect
             });
+
+            await task;
+        }
+        private async Task OnProxyChannelClosed(IChannel channel)
+        {
+            var pchannel = channel as ProxyChannel<ProxyPackage>;
+            await SendDisconnectPackage(pchannel, -1);
         }
 
         public async Task StopAsync()
@@ -60,8 +68,10 @@ namespace EasyProxy.Client
             var channels = serverChannelHolder.Values;
             foreach (var channel in channels)
             {
-                channel.Close();
+                await channel.Close();
             }
+            await proxyChannel.Close();
+
             await Task.CompletedTask;
         }
 
@@ -82,7 +92,7 @@ namespace EasyProxy.Client
             if (serverChannelHolder.ContainsKey(package.ConnectionId))
             {
                 //logger.LogInformation("收到服务端发送的断开连接");
-                serverChannelHolder[package.ConnectionId].Close();
+                await serverChannelHolder[package.ConnectionId].Close();
                 serverChannelHolder.Remove(package.ConnectionId);
             }
             await Task.CompletedTask;
@@ -103,7 +113,6 @@ namespace EasyProxy.Client
                 var connectionId = package.ConnectionId;
                 targetChannel = new MarkedProxyChannel(connectionId, nsocket, logger, channelOptions);
                 targetChannel.DataReceived += OnDataReceived;
-                //targetChannel.Closed += OnChannelClosedAsync;
                 serverChannelHolder[package.ConnectionId] = targetChannel;
                 _ = targetChannel.StartAsync();
             }
@@ -127,6 +136,13 @@ namespace EasyProxy.Client
             await proxyChannel.SendAsync(package);
         }
 
+
+        /// <summary>
+        /// connectionId -1 表示关闭整个channel
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="connectionId"></param>
+        /// <returns></returns>
         private async Task SendDisconnectPackage(IChannel<ProxyPackage> channel, long connectionId)
         {
             await channel.SendAsync(new ProxyPackage

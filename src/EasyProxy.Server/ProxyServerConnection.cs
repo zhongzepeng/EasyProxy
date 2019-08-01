@@ -58,7 +58,7 @@ namespace EasyProxy.Server
         private async Task OnMarkedProxyChannelClosedAsync(IChannel sender)
         {
             var markedChannel = sender as MarkedProxyChannel;
-            markedChannel.Close();
+            await markedChannel.Close();
             clientChannelHolder.TryRemove(markedChannel.Mark, out _);
             await channel.SendAsync(new ProxyPackage
             {
@@ -78,7 +78,11 @@ namespace EasyProxy.Server
 
         public async Task StopAsync()
         {
-            await Task.CompletedTask;
+            foreach (var item in clientChannelHolder.Values)
+            {
+                await item.Close();
+            }
+            socket.Close();
         }
 
         private async Task OnPackageReceived(IChannel<ProxyPackage> channel, ProxyPackage package)
@@ -103,7 +107,7 @@ namespace EasyProxy.Server
         private async Task ProcessDisconnect(IChannel<ProxyPackage> channel, ProxyPackage package)
         {
             var existsChannel = clientChannelHolder[package.ConnectionId];
-            existsChannel?.Close();
+            await existsChannel?.Close();
             await Task.CompletedTask;
         }
 
